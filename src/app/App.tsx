@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { archiveCustomer, createCustomer, getCustomerById, getCustomersByOrganization, searchCustomers, updateCustomer } from "../crm/services/customerService";
 import {
+  archiveCustomerVisit,
+  createCustomerVisit,
+  getCustomerVisitAnalytics,
+  listCustomerVisits,
+  type CustomerVisitAnalytics,
+} from "../crm/services/customerVisitsService";
+import {
   LayoutDashboard, Users, CreditCard, Bell, BarChart3, Settings,
   TrendingUp, TrendingDown, Target, QrCode, Gift, Calendar,
   Search, Plus, Download, Eye, Star, Crown, ArrowUpRight,
@@ -18,7 +25,7 @@ import {
 import { getDashboardSummary, type DashboardSummary } from "../dashboard/services/dashboardService";
 import { createWalletCard, type WalletCardRecord } from "../wallet/services/walletService";
 import { supabase } from "../shared/lib/supabase";
-import type { Customer } from "../shared/types/database";
+import type { Customer, CustomerVisit } from "../shared/types/database";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -973,6 +980,29 @@ async function getCurrentOrganizationId(): Promise<string | null> {
   return data?.organization_id ?? null;
 }
 
+async function getCurrentRestaurantId(): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("restaurant_memberships")
+    .select("restaurant_id")
+    .eq("profile_id", user.id)
+    .eq("is_deleted", false)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    return null;
+  }
+
+  return data?.restaurant_id ?? null;
+}
+
 function CRMCreateEditModal({
   customer,
   organizationId,
@@ -1228,29 +1258,71 @@ function CRMScreen({ onViewProfile }: { onViewProfile: (id: string) => void }) {
 
 function CRMProfileScreen({ customerId, onBack }: { customerId: string; onBack: () => void }) {
   const [customer, setCustomer] = useState<CustomerRecord | null>(null);
+  const [visitAnalytics, setVisitAnalytics] = useState<CustomerVisitAnalytics | null>(null);
+  const [visitHistory, setVisitHistory] = useState<CustomerVisit[]>([]);
+  const [visitLoading, setVisitLoading] = useState(true);
+  const [visitError, setVisitError] = useState<string | null>(null);
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
+  const [visitDate, setVisitDate] = useState(() => new Date().toISOString().slice(0, 16));
+  const [visitAmount, setVisitAmount] = useState("0");
+  const [visitNotes, setVisitNotes] = useState("");
+  const [savingVisit, setSavingVisit] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [walletMessage, setWalletMessage] = useState<string | null>(null);
   const mountedRef = useRef(true);
 
+  const loadVisitData = useCallback(async (targetCustomerId: string) => {
+    setVisitLoading(true);
+    setVisitError(null);
+
+    const [historyResult, analyticsResult] = await Promise.all([
+      listCustomerVisits(targetCustomerId),
+      getCustomerVisitAnalytics(targetCustomerId),
+    ]);
+
+    if (!mountedRef.current) return;
+
+    if (historyResult.error || analyticsResult.error) {
+      setVisitHistory([]);
+      setVisitAnalytics(null);
+      setVisitError(historyResult.error ?? analyticsResult.error ?? "Unable to load visit history");
+      setVisitLoading(false);
+      return;
+    }
+
+    setVisitHistory(historyResult.data ?? []);
+    setVisitAnalytics(analyticsResult.data);
+    setVisitLoading(false);
+  }, []);
+
   const loadCustomer = useCallback(async () => {
     setLoading(true);
-      const { data, error: requestError } = await getCustomerById(customerId);
+    const { data, error: requestError } = await getCustomerById(customerId);
     if (!mountedRef.current) return;
     if (requestError || !data) {
       setError(requestError ?? 'Customer not found');
       setCustomer(null);
+      setVisitHistory([]);
+      setVisitAnalytics(null);
     } else {
       setError(null);
-        setCustomer(toCustomerRecord(data));
+      setCustomer(toCustomerRecord(data));
+      void loadVisitData(data.id);
     }
     setLoading(false);
-  }, [customerId]);
+  }, [customerId, loadVisitData]);
 
   useEffect(() => {
     mountedRef.current = true;
     void loadCustomer();
+    void (async () => {
+      const resolvedRestaurantId = await getCurrentRestaurantId();
+      if (mountedRef.current) {
+        setRestaurantId(resolvedRestaurantId);
+      }
+    })();
 
     return () => {
       mountedRef.current = false;
@@ -1281,6 +1353,46 @@ function CRMProfileScreen({ customerId, onBack }: { customerId: string; onBack: 
     }
 
     setWalletMessage('Wallet pass record prepared for Apple Wallet integration.');
+  };
+
+  const handleLogVisit = async () => {
+    if (!customer) return;
+
+    setSavingVisit(true);
+    setVisitError(null);
+
+    const amount = Number(visitAmount);
+    const result = await createCustomerVisit({
+      organization_id: customer.organization_id,
+      customer_id: customer.id,
+      restaurant_id: restaurantId ?? undefined,
+      visit_date: new Date(visitDate).toISOString(),
+      total_amount: Number.isFinite(amount) ? amount : 0,
+      notes: visitNotes || null,
+      source: 'crm_profile',
+    });
+
+    if (result.error) {
+      setVisitError(result.error);
+      setSavingVisit(false);
+      return;
+    }
+
+    setVisitAmount("0");
+    setVisitNotes("");
+    setVisitDate(new Date().toISOString().slice(0, 16));
+    await loadCustomer();
+    setSavingVisit(false);
+  };
+
+  const handleArchiveVisit = async (visitId: string) => {
+    const result = await archiveCustomerVisit(visitId);
+    if (result.error) {
+      setVisitError(result.error);
+      return;
+    }
+
+    await loadCustomer();
   };
 
   return (
@@ -1340,6 +1452,79 @@ function CRMProfileScreen({ customerId, onBack }: { customerId: string; onBack: 
         </Card>
 
         <div className="lg:col-span-2 space-y-4">
+          <Card className="p-5">
+            <SectionHeader title="Visits" subtitle="Recent history and customer behavior" />
+            {visitError && <p className="mb-3 text-sm text-red-300">{visitError}</p>}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+              <div className="rounded-lg border border-white/8 bg-white/3 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-500">Total visits</p>
+                <p className="mt-1 text-lg font-semibold text-white">{visitAnalytics?.totalVisits ?? 0}</p>
+              </div>
+              <div className="rounded-lg border border-white/8 bg-white/3 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-500">Avg. ticket</p>
+                <p className="mt-1 text-lg font-semibold text-white">€{Number(visitAnalytics?.averageTicket ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+              </div>
+              <div className="rounded-lg border border-white/8 bg-white/3 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-500">Lifetime value</p>
+                <p className="mt-1 text-lg font-semibold text-white">€{Number(visitAnalytics?.lifetimeValue ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+              </div>
+              <div className="rounded-lg border border-white/8 bg-white/3 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-500">Frequency</p>
+                <p className="mt-1 text-lg font-semibold text-white">
+                  {visitAnalytics?.visitFrequencyDays !== null && visitAnalytics?.visitFrequencyDays !== undefined
+                    ? `${visitAnalytics.visitFrequencyDays.toFixed(1)} days`
+                    : "—"}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+              <FWInput label="Visit date" type="datetime-local" defaultValue={visitDate} onChange={(value) => setVisitDate(value)} />
+              <FWInput label="Amount" type="number" defaultValue={visitAmount} onChange={(value) => setVisitAmount(value)} />
+              <div className="flex items-end">
+                <Btn variant="secondary" size="sm" onClick={() => { void handleLogVisit(); }} className="w-full justify-center">
+                  <Plus size={12} /> Log Visit
+                </Btn>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="mb-1.5 block text-xs font-medium text-slate-400 uppercase tracking-wide">Visit notes</label>
+              <textarea
+                value={visitNotes}
+                onChange={(event) => setVisitNotes(event.target.value)}
+                className="w-full bg-[#1E293B] border border-white/8 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-[#FF6B35]/50 transition-all"
+                rows={2}
+                placeholder="Optional context for this visit"
+              />
+            </div>
+
+            {visitLoading ? (
+              <p className="text-sm text-slate-400">Loading visit history...</p>
+            ) : visitHistory.length === 0 ? (
+              <p className="text-sm text-slate-500">No visits logged yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {visitHistory.slice(0, 6).map((visit) => (
+                  <div key={visit.id} className="rounded-lg border border-white/8 bg-white/2 px-3 py-2 flex items-center gap-3">
+                    <div>
+                      <p className="text-sm text-white">€{Number(visit.amount_spent).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                      <p className="text-xs text-slate-500">{new Date(visit.visit_at).toLocaleString()}</p>
+                    </div>
+                    <p className="text-xs text-slate-400 flex-1">{visit.notes || "No notes"}</p>
+                    <button
+                      onClick={() => { void handleArchiveVisit(visit.id); }}
+                      className="text-xs text-red-300 hover:text-red-200"
+                      disabled={savingVisit}
+                    >
+                      Archive
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
           <Card className="p-5">
             <SectionHeader title="Notes" subtitle="Customer context" />
             <p className="text-slate-400 text-sm">{customer.notes || 'No notes yet.'}</p>

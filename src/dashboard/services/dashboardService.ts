@@ -1,5 +1,9 @@
 import { supabase } from '../../shared/lib/supabase';
 import type { ApiResponse } from '../../shared/types';
+import {
+  getCustomerVisitDashboardMetrics,
+  type CustomerVisitDashboardMetrics,
+} from '../../crm/services/customerVisitsService';
 
 export interface DashboardSummary {
   restaurantName: string | null;
@@ -8,6 +12,7 @@ export interface DashboardSummary {
   totalUsers: number;
   totalCustomers: number;
   totalCampaigns: number;
+  customerVisitMetrics: CustomerVisitDashboardMetrics;
 }
 
 export async function getDashboardSummary(): Promise<ApiResponse<DashboardSummary>> {
@@ -47,6 +52,13 @@ export async function getDashboardSummary(): Promise<ApiResponse<DashboardSummar
           totalUsers: 0,
           totalCustomers: 0,
           totalCampaigns: 0,
+          customerVisitMetrics: {
+            totalCustomersVisited: 0,
+            totalVisits: 0,
+            averageTicket: 0,
+            lifetimeValue: 0,
+            repeatCustomerRate: 0,
+          },
         },
         error: null,
       };
@@ -54,7 +66,7 @@ export async function getDashboardSummary(): Promise<ApiResponse<DashboardSummar
 
     const { data: restaurantData, error: restaurantError } = await supabase
       .from('restaurants')
-      .select('id, name, plan')
+      .select('id, organization_id, name, plan')
       .eq('id', membershipData.restaurant_id)
       .maybeSingle();
 
@@ -71,14 +83,33 @@ export async function getDashboardSummary(): Promise<ApiResponse<DashboardSummar
       return { data: null, error: memberCountError.message };
     }
 
+    const organizationId = restaurantData?.organization_id;
+    const visitMetricsResult = organizationId
+      ? await getCustomerVisitDashboardMetrics(organizationId)
+      : {
+          data: {
+            totalCustomersVisited: 0,
+            totalVisits: 0,
+            averageTicket: 0,
+            lifetimeValue: 0,
+            repeatCustomerRate: 0,
+          },
+          error: null,
+        };
+
+    if (visitMetricsResult.error || !visitMetricsResult.data) {
+      return { data: null, error: visitMetricsResult.error ?? 'Unable to load customer visit metrics' };
+    }
+
     return {
       data: {
         restaurantName: restaurantData?.name ?? null,
         plan: restaurantData?.plan ?? null,
         loggedInUser: profileData?.full_name ?? user.email ?? null,
         totalUsers: count ?? 0,
-        totalCustomers: 0,
+        totalCustomers: visitMetricsResult.data.totalCustomersVisited,
         totalCampaigns: 0,
+        customerVisitMetrics: visitMetricsResult.data,
       },
       error: null,
     };
