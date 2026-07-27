@@ -11,49 +11,138 @@ create table if not exists public.wallet_cards (
 
 alter table public.wallet_cards enable row level security;
 
-create policy if not exists wallet_cards_select_own_restaurant
-  on public.wallet_cards
-  for select
-  using (
-    restaurant_id in (
-      select restaurant_id
-      from public.restaurant_memberships
-      where profile_id = auth.uid()
-    )
-  );
+drop policy if exists wallet_cards_select_own_restaurant on public.wallet_cards;
+drop policy if exists wallet_cards_insert_own_restaurant on public.wallet_cards;
+drop policy if exists wallet_cards_update_own_restaurant on public.wallet_cards;
+drop policy if exists wallet_cards_delete_own_restaurant on public.wallet_cards;
 
-create policy if not exists wallet_cards_insert_own_restaurant
-  on public.wallet_cards
-  for insert
-  with check (
-    restaurant_id in (
-      select restaurant_id
-      from public.restaurant_memberships
-      where profile_id = auth.uid()
-    )
-  );
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'wallet_cards'
+      and column_name = 'restaurant_id'
+  ) then
+    execute $sql$
+      create policy wallet_cards_select_own_restaurant
+        on public.wallet_cards
+        for select
+        using (
+          restaurant_id in (
+            select restaurant_id
+            from public.restaurant_memberships
+            where profile_id = auth.uid()
+          )
+        )
+    $sql$;
 
-create policy if not exists wallet_cards_update_own_restaurant
-  on public.wallet_cards
-  for update
-  using (
-    restaurant_id in (
-      select restaurant_id
-      from public.restaurant_memberships
-      where profile_id = auth.uid()
-    )
-  );
+    execute $sql$
+      create policy wallet_cards_insert_own_restaurant
+        on public.wallet_cards
+        for insert
+        with check (
+          restaurant_id in (
+            select restaurant_id
+            from public.restaurant_memberships
+            where profile_id = auth.uid()
+          )
+        )
+    $sql$;
 
-create policy if not exists wallet_cards_delete_own_restaurant
-  on public.wallet_cards
-  for delete
-  using (
-    restaurant_id in (
-      select restaurant_id
-      from public.restaurant_memberships
-      where profile_id = auth.uid()
-    )
-  );
+    execute $sql$
+      create policy wallet_cards_update_own_restaurant
+        on public.wallet_cards
+        for update
+        using (
+          restaurant_id in (
+            select restaurant_id
+            from public.restaurant_memberships
+            where profile_id = auth.uid()
+          )
+        )
+    $sql$;
+
+    execute $sql$
+      create policy wallet_cards_delete_own_restaurant
+        on public.wallet_cards
+        for delete
+        using (
+          restaurant_id in (
+            select restaurant_id
+            from public.restaurant_memberships
+            where profile_id = auth.uid()
+          )
+        )
+    $sql$;
+  elsif exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'wallet_cards'
+      and column_name = 'organization_id'
+  )
+  and exists (
+    select 1
+    from information_schema.tables
+    where table_schema = 'public'
+      and table_name = 'organization_memberships'
+  ) then
+    execute $sql$
+      create policy wallet_cards_select_own_restaurant
+        on public.wallet_cards
+        for select
+        using (
+          organization_id in (
+            select organization_id
+            from public.organization_memberships
+            where profile_id = auth.uid()
+          )
+        )
+    $sql$;
+
+    execute $sql$
+      create policy wallet_cards_insert_own_restaurant
+        on public.wallet_cards
+        for insert
+        with check (
+          organization_id in (
+            select organization_id
+            from public.organization_memberships
+            where profile_id = auth.uid()
+          )
+        )
+    $sql$;
+
+    execute $sql$
+      create policy wallet_cards_update_own_restaurant
+        on public.wallet_cards
+        for update
+        using (
+          organization_id in (
+            select organization_id
+            from public.organization_memberships
+            where profile_id = auth.uid()
+          )
+        )
+    $sql$;
+
+    execute $sql$
+      create policy wallet_cards_delete_own_restaurant
+        on public.wallet_cards
+        for delete
+        using (
+          organization_id in (
+            select organization_id
+            from public.organization_memberships
+            where profile_id = auth.uid()
+          )
+        )
+    $sql$;
+  end if;
+end;
+$$;
 
 create or replace function public.touch_wallet_card_updated_at()
 returns trigger

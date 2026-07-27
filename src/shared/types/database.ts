@@ -25,6 +25,12 @@ export type CustomerMarketingSegment = 'vip' | 'regular' | 'new' | 'at_risk' | '
 
 export type WalletPlatform = 'apple_wallet' | 'google_wallet' | (string & {});
 export type WalletCardStatus = 'active' | 'suspended' | 'revoked' | (string & {});
+export type WalletPassStatus = 'pending' | 'active' | 'suspended' | 'revoked' | 'error' | (string & {});
+export type WalletPassSyncEventType = 'created' | 'synchronized' | 'downloaded' | 'revoked' | 'sync_failed' | (string & {});
+
+export type LoyaltyRoundingStrategy = 'floor' | 'round' | 'ceil' | (string & {});
+export type LoyaltyTransactionType = 'earn' | 'redeem' | 'adjustment' | 'reversal' | (string & {});
+export type RewardHistoryStatus = 'redeemed' | 'reverted' | (string & {});
 
 export type BillingInterval = 'month' | 'year' | (string & {});
 export type PlanStatus = 'active' | 'inactive' | 'deprecated' | (string & {});
@@ -101,12 +107,104 @@ export interface CustomerVisit extends DomainEntity, SoftDelete {
   notes: string | null;
 }
 
+export interface LoyaltyConfig extends DomainEntity {
+  organization_id: UUID;
+  is_enabled: boolean;
+  points_per_currency_unit: number;
+  currency_unit: number;
+  rounding_strategy: LoyaltyRoundingStrategy;
+  base_multiplier: number;
+  allow_negative_balance: boolean;
+}
+
+export interface CustomerLevel extends DomainEntity {
+  organization_id: UUID;
+  name: string;
+  priority: number;
+  min_points: number;
+  multiplier: number;
+  benefits: Record<string, unknown>;
+  is_default: boolean;
+  is_active: boolean;
+}
+
+export interface LoyaltyReward extends DomainEntity, SoftDelete {
+  organization_id: UUID;
+  name: string;
+  description: string | null;
+  points_cost: number;
+  metadata: Record<string, unknown>;
+  is_active: boolean;
+}
+
+export interface LoyaltyWallet extends DomainEntity {
+  organization_id: UUID;
+  customer_id: UUID;
+  points_balance: number;
+  lifetime_points: number;
+  current_level_id: UUID | null;
+  last_activity_at: ISODateString | null;
+}
+
+export interface LoyaltyTransaction {
+  id: UUID;
+  organization_id: UUID;
+  customer_id: UUID;
+  wallet_id: UUID;
+  visit_id: UUID | null;
+  reward_id: UUID | null;
+  transaction_type: LoyaltyTransactionType;
+  points_delta: number;
+  balance_after: number;
+  description: string | null;
+  metadata: Record<string, unknown>;
+  created_at: ISODateString;
+}
+
+export interface RewardHistory {
+  id: UUID;
+  organization_id: UUID;
+  customer_id: UUID;
+  reward_id: UUID;
+  transaction_id: UUID;
+  points_spent: number;
+  status: RewardHistoryStatus;
+  notes: string | null;
+  metadata: Record<string, unknown>;
+  created_at: ISODateString;
+}
+
 export interface WalletCard extends DomainEntity, SoftDelete {
   organization_id: UUID;
   customer_id: UUID;
   pass_identifier: string;
   platform: WalletPlatform;
   status: WalletCardStatus;
+}
+
+export interface WalletPass extends DomainEntity {
+  organization_id: UUID;
+  customer_id: UUID;
+  platform: WalletPlatform;
+  status: WalletPassStatus;
+  pass_identifier: string;
+  qr_token: string;
+  download_token: string;
+  download_endpoint: string;
+  payload: Record<string, unknown>;
+  payload_hash: string;
+  last_synced_at: ISODateString | null;
+  sync_error: string | null;
+}
+
+export interface WalletPassSyncEvent {
+  id: UUID;
+  wallet_pass_id: UUID;
+  organization_id: UUID;
+  customer_id: UUID;
+  event_type: WalletPassSyncEventType;
+  metadata: Record<string, unknown>;
+  created_at: ISODateString;
 }
 
 export interface Plan extends DomainEntity, SoftDelete {

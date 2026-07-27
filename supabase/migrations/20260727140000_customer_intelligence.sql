@@ -1,4 +1,11 @@
 alter table public.customers
+  add column if not exists birthday date,
+  add column if not exists tags text[] not null default '{}',
+  add column if not exists total_visits integer not null default 0,
+  add column if not exists total_spent numeric(12,2) not null default 0,
+  add column if not exists last_visit timestamptz,
+  add column if not exists lifecycle_status text not null default 'active',
+  add column if not exists marketing_segment text,
   add column if not exists customer_score integer,
   add column if not exists customer_status text,
   add column if not exists average_ticket numeric(12,2),

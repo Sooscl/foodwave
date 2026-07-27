@@ -8,6 +8,12 @@ import {
   type CustomerVisitAnalytics,
 } from "../crm/services/customerVisitsService";
 import {
+  getCustomerLoyaltySnapshot,
+  listLoyaltyTransactions,
+  listRewardHistory,
+  type CustomerLoyaltySnapshot,
+} from "../loyalty/services/loyaltyService";
+import {
   LayoutDashboard, Users, CreditCard, Bell, BarChart3, Settings,
   TrendingUp, TrendingDown, Target, QrCode, Gift, Calendar,
   Search, Plus, Download, Eye, Star, Crown, ArrowUpRight,
@@ -23,9 +29,14 @@ import {
   Legend, ComposedChart
 } from "recharts";
 import { getDashboardSummary, type DashboardSummary } from "../dashboard/services/dashboardService";
-import { createWalletCard, type WalletCardRecord } from "../wallet/services/walletService";
+import {
+  createCustomerWalletPass,
+  getCustomerWalletStatus,
+  getWalletPassDownload,
+  type CustomerWalletStatus,
+} from "../wallet/services/walletPassService";
 import { supabase } from "../shared/lib/supabase";
-import type { Customer, CustomerVisit } from "../shared/types/database";
+import type { Customer, CustomerVisit, LoyaltyTransaction, RewardHistory } from "../shared/types/database";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -1258,6 +1269,11 @@ function CRMScreen({ onViewProfile }: { onViewProfile: (id: string) => void }) {
 
 function CRMProfileScreen({ customerId, onBack }: { customerId: string; onBack: () => void }) {
   const [customer, setCustomer] = useState<CustomerRecord | null>(null);
+  const [loyaltySnapshot, setLoyaltySnapshot] = useState<CustomerLoyaltySnapshot | null>(null);
+  const [loyaltyTransactions, setLoyaltyTransactions] = useState<LoyaltyTransaction[]>([]);
+  const [rewardHistory, setRewardHistory] = useState<RewardHistory[]>([]);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(true);
+  const [loyaltyError, setLoyaltyError] = useState<string | null>(null);
   const [visitAnalytics, setVisitAnalytics] = useState<CustomerVisitAnalytics | null>(null);
   const [visitHistory, setVisitHistory] = useState<CustomerVisit[]>([]);
   const [visitLoading, setVisitLoading] = useState(true);
@@ -1271,6 +1287,7 @@ function CRMProfileScreen({ customerId, onBack }: { customerId: string; onBack: 
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [walletMessage, setWalletMessage] = useState<string | null>(null);
+  const [walletStatus, setWalletStatus] = useState<CustomerWalletStatus | null>(null);
   const mountedRef = useRef(true);
 
   const loadVisitData = useCallback(async (targetCustomerId: string) => {
@@ -1297,6 +1314,47 @@ function CRMProfileScreen({ customerId, onBack }: { customerId: string; onBack: 
     setVisitLoading(false);
   }, []);
 
+  const loadLoyaltyData = useCallback(async (organizationId: string, targetCustomerId: string) => {
+    setLoyaltyLoading(true);
+    setLoyaltyError(null);
+
+    const [snapshotResult, transactionsResult, rewardsResult] = await Promise.all([
+      getCustomerLoyaltySnapshot(organizationId, targetCustomerId),
+      listLoyaltyTransactions(organizationId, targetCustomerId),
+      listRewardHistory(organizationId, targetCustomerId),
+    ]);
+
+    if (!mountedRef.current) return;
+
+    if (snapshotResult.error || transactionsResult.error || rewardsResult.error) {
+      setLoyaltySnapshot(null);
+      setLoyaltyTransactions([]);
+      setRewardHistory([]);
+      setLoyaltyError(snapshotResult.error ?? transactionsResult.error ?? rewardsResult.error ?? "Unable to load loyalty data");
+      setLoyaltyLoading(false);
+      return;
+    }
+
+    setLoyaltySnapshot(snapshotResult.data);
+    setLoyaltyTransactions(transactionsResult.data ?? []);
+    setRewardHistory(rewardsResult.data ?? []);
+    setLoyaltyLoading(false);
+  }, []);
+
+  const loadWalletStatus = useCallback(async (organizationId: string, targetCustomerId: string) => {
+    const result = await getCustomerWalletStatus(organizationId, targetCustomerId);
+
+    if (!mountedRef.current) return;
+
+    if (result.error) {
+      setWalletStatus(null);
+      setWalletMessage(result.error);
+      return;
+    }
+
+    setWalletStatus(result.data);
+  }, []);
+
   const loadCustomer = useCallback(async () => {
     setLoading(true);
     const { data, error: requestError } = await getCustomerById(customerId);
@@ -1306,13 +1364,19 @@ function CRMProfileScreen({ customerId, onBack }: { customerId: string; onBack: 
       setCustomer(null);
       setVisitHistory([]);
       setVisitAnalytics(null);
+      setLoyaltySnapshot(null);
+      setLoyaltyTransactions([]);
+      setRewardHistory([]);
+      setWalletStatus(null);
     } else {
       setError(null);
       setCustomer(toCustomerRecord(data));
       void loadVisitData(data.id);
+      void loadLoyaltyData(data.organization_id, data.id);
+      void loadWalletStatus(data.organization_id, data.id);
     }
     setLoading(false);
-  }, [customerId, loadVisitData]);
+  }, [customerId, loadLoyaltyData, loadVisitData, loadWalletStatus]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -1337,22 +1401,42 @@ function CRMProfileScreen({ customerId, onBack }: { customerId: string; onBack: 
     return <div className="text-sm text-red-300">{error ?? 'Customer not found'}</div>;
   }
 
-  const handleCreateWalletCard = async () => {
+  const triggerWalletPassDownload = (downloadUrl: string, fileName: string): void => {
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = fileName;
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleAddToWallet = async (platform: "apple_wallet" | "google_wallet") => {
     if (!customer) return;
 
     setWalletMessage(null);
-    const result = await createWalletCard({
+    const passResult = await createCustomerWalletPass({
+      organization_id: customer.organization_id,
       customer_id: customer.id,
-      pass_identifier: `fw-${customer.id}`,
-      platform: 'Apple Wallet',
+      platform,
     });
 
-    if (result.error) {
-      setWalletMessage(result.error);
+    if (passResult.error || !passResult.data) {
+      setWalletMessage(passResult.error ?? 'Unable to create wallet pass');
       return;
     }
 
-    setWalletMessage('Wallet pass record prepared for Apple Wallet integration.');
+    const downloadResult = await getWalletPassDownload(passResult.data.id);
+    if (downloadResult.error || !downloadResult.data) {
+      setWalletMessage(downloadResult.error ?? 'Unable to prepare wallet pass download');
+      return;
+    }
+
+    triggerWalletPassDownload(downloadResult.data.downloadUrl, downloadResult.data.fileName);
+    await loadWalletStatus(customer.organization_id, customer.id);
+    setWalletMessage(
+      `${platform === 'apple_wallet' ? 'Apple Wallet' : 'Google Wallet'} pass downloaded. Endpoint: ${downloadResult.data.endpoint}`,
+    );
   };
 
   const handleLogVisit = async () => {
@@ -1407,7 +1491,8 @@ function CRMProfileScreen({ customerId, onBack }: { customerId: string; onBack: 
         </div>
         <div className="ml-auto flex gap-2">
           <Btn variant="secondary" size="sm" onClick={() => setShowModal(true)}><Edit size={12} /> Edit</Btn>
-          <Btn variant="secondary" size="sm" onClick={() => { void handleCreateWalletCard(); }}><CreditCard size={12} /> Wallet</Btn>
+          <Btn variant="secondary" size="sm" onClick={() => { void handleAddToWallet('apple_wallet'); }}><CreditCard size={12} /> Apple Wallet</Btn>
+          <Btn variant="secondary" size="sm" onClick={() => { void handleAddToWallet('google_wallet'); }}><CreditCard size={12} /> Google Wallet</Btn>
         </div>
       </div>
 
@@ -1523,6 +1608,108 @@ function CRMProfileScreen({ customerId, onBack }: { customerId: string; onBack: 
                 ))}
               </div>
             )}
+          </Card>
+
+          <Card className="p-5">
+            <SectionHeader title="Loyalty" subtitle="Points, tier and reward activity" />
+            {loyaltyError && <p className="mb-3 text-sm text-red-300">{loyaltyError}</p>}
+            {loyaltyLoading ? (
+              <p className="text-sm text-slate-400">Loading loyalty data...</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+                  <div className="rounded-lg border border-white/8 bg-white/3 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Points balance</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{loyaltySnapshot?.wallet.points_balance ?? 0}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/8 bg-white/3 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Lifetime points</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{loyaltySnapshot?.wallet.lifetime_points ?? 0}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/8 bg-white/3 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Current level</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{loyaltySnapshot?.level?.name ?? "Bronze"}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/8 bg-white/3 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Level multiplier</p>
+                    <p className="mt-1 text-lg font-semibold text-white">x{Number(loyaltySnapshot?.level?.multiplier ?? 1).toFixed(2)}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Recent transactions</p>
+                    {loyaltyTransactions.length === 0 ? (
+                      <p className="text-sm text-slate-500">No loyalty transactions yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {loyaltyTransactions.slice(0, 5).map((entry) => (
+                          <div key={entry.id} className="rounded-lg border border-white/8 bg-white/2 px-3 py-2 flex items-center gap-3">
+                            <p className={`text-sm font-semibold ${entry.points_delta >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                              {entry.points_delta >= 0 ? "+" : ""}{entry.points_delta} pts
+                            </p>
+                            <p className="text-xs text-slate-400 flex-1">{entry.transaction_type}</p>
+                            <p className="text-xs text-slate-500">{new Date(entry.created_at).toLocaleDateString()}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Reward history</p>
+                    {rewardHistory.length === 0 ? (
+                      <p className="text-sm text-slate-500">No rewards redeemed yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {rewardHistory.slice(0, 5).map((entry) => (
+                          <div key={entry.id} className="rounded-lg border border-white/8 bg-white/2 px-3 py-2 flex items-center gap-3">
+                            <p className="text-sm font-semibold text-white">-{entry.points_spent} pts</p>
+                            <p className="text-xs text-slate-400 flex-1">{entry.status}</p>
+                            <p className="text-xs text-slate-500">{new Date(entry.created_at).toLocaleDateString()}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </Card>
+
+          <Card className="p-5">
+            <SectionHeader title="Digital Wallet" subtitle="Wallet pass status and QR sync" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+              <div className="rounded-lg border border-white/8 bg-white/3 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-500">Apple Wallet</p>
+                <p className="mt-1 text-lg font-semibold text-white">{walletStatus?.hasAppleWallet ? 'Connected' : 'Not connected'}</p>
+              </div>
+              <div className="rounded-lg border border-white/8 bg-white/3 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-500">Google Wallet</p>
+                <p className="mt-1 text-lg font-semibold text-white">{walletStatus?.hasGoogleWallet ? 'Connected' : 'Not connected'}</p>
+              </div>
+              <div className="rounded-lg border border-white/8 bg-white/3 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-500">Wallet passes</p>
+                <p className="mt-1 text-lg font-semibold text-white">{walletStatus?.passes.length ?? 0}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {(walletStatus?.passes ?? []).slice(0, 4).map((pass) => (
+                <div key={pass.id} className="rounded-lg border border-white/8 bg-white/2 px-3 py-2 flex items-center gap-3">
+                  <p className="text-sm text-white">
+                    {pass.platform === 'apple_wallet' ? 'Apple Wallet' : 'Google Wallet'}
+                  </p>
+                  <p className="text-xs text-slate-500 flex-1">QR: {pass.qr_token.slice(0, 12)}...</p>
+                  <Badge variant={pass.status === 'active' ? 'success' : pass.status === 'error' ? 'danger' : 'warning'}>
+                    {pass.status}
+                  </Badge>
+                </div>
+              ))}
+              {(walletStatus?.passes.length ?? 0) === 0 && (
+                <p className="text-sm text-slate-500">No wallet passes yet.</p>
+              )}
+            </div>
           </Card>
 
           <Card className="p-5">

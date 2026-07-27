@@ -2,6 +2,12 @@ import { supabase } from '../../shared/lib/supabase';
 import { ENV } from '../../shared/config/env';
 import type { ApiResponse } from '../../shared/types';
 import type { CustomerVisit } from '../../shared/types/database';
+import {
+  awardPointsForVisit,
+  calculateVisitPoints,
+  reverseVisitPoints,
+  syncVisitPoints,
+} from '../../loyalty/services/loyaltyService';
 
 type VisitMetadata = {
   source?: string;
@@ -221,13 +227,23 @@ export async function createCustomerVisit(input: CreateCustomerVisitInput): Prom
       return { data: null, error: resolvedRestaurant.error ?? 'Unable to resolve restaurant' };
     }
 
+    const calculatedPointsResult = await calculateVisitPoints(
+      organizationId,
+      customerId,
+      normalizeNumber(input.total_amount, 'total_amount'),
+    );
+
+    if (calculatedPointsResult.error || calculatedPointsResult.data === null) {
+      return { data: null, error: calculatedPointsResult.error ?? 'Unable to calculate visit loyalty points' };
+    }
+
     const payload = {
       organization_id: organizationId,
       customer_id: customerId,
       restaurant_id: resolvedRestaurant.data,
       visit_date: input.visit_date ?? new Date().toISOString(),
       amount: normalizeNumber(input.total_amount, 'total_amount'),
-      points_earned: input.points_earned ?? 0,
+      points_earned: calculatedPointsResult.data,
       points_redeemed: input.points_redeemed ?? 0,
       notes: normalizeOptionalText(input.notes),
       metadata: {
@@ -243,12 +259,28 @@ export async function createCustomerVisit(input: CreateCustomerVisitInput): Prom
       return { data: null, error: error?.message ?? 'Unable to create customer visit' };
     }
 
+    const mappedVisit = mapVisitRow(data);
+
+    const loyaltyResult = await awardPointsForVisit({
+      organization_id: organizationId,
+      customer_id: customerId,
+      visit_id: mappedVisit.id,
+      total_amount: mappedVisit.amount_spent,
+      metadata: {
+        source: normalizeOptionalText(input.source),
+      },
+    });
+
+    if (loyaltyResult.error) {
+      return { data: null, error: loyaltyResult.error };
+    }
+
     const metricsResult = await upsertCustomerMetricsFromVisits(organizationId, customerId);
     if (metricsResult.error) {
       return { data: null, error: metricsResult.error };
     }
 
-    return { data: mapVisitRow(data), error: null };
+    return { data: mappedVisit, error: null };
   } catch (error) {
     return { data: null, error: toErrorMessage(error) };
   }
@@ -266,6 +298,17 @@ export async function updateCustomerVisit(id: string, input: UpdateCustomerVisit
       return { data: null, error: 'Customer visit not found' };
     }
 
+    const amountForPoints = input.total_amount ?? currentResult.data.amount_spent;
+    const calculatedPointsResult = await calculateVisitPoints(
+      currentResult.data.organization_id,
+      currentResult.data.customer_id,
+      normalizeNumber(amountForPoints, 'total_amount'),
+    );
+
+    if (calculatedPointsResult.error || calculatedPointsResult.data === null) {
+      return { data: null, error: calculatedPointsResult.error ?? 'Unable to calculate visit loyalty points' };
+    }
+
     const updates: Record<string, unknown> = {};
 
     if (input.visit_date !== undefined) {
@@ -274,9 +317,7 @@ export async function updateCustomerVisit(id: string, input: UpdateCustomerVisit
     if (input.total_amount !== undefined) {
       updates.amount = normalizeNumber(input.total_amount, 'total_amount');
     }
-    if (input.points_earned !== undefined) {
-      updates.points_earned = normalizeNumber(input.points_earned, 'points_earned');
-    }
+    updates.points_earned = calculatedPointsResult.data;
     if (input.points_redeemed !== undefined) {
       updates.points_redeemed = normalizeNumber(input.points_redeemed, 'points_redeemed');
     }
@@ -311,6 +352,40 @@ export async function updateCustomerVisit(id: string, input: UpdateCustomerVisit
     }
 
     const mapped = mapVisitRow(data);
+
+    const loyaltySyncResult = await syncVisitPoints({
+      organization_id: mapped.organization_id,
+      customer_id: mapped.customer_id,
+      visit_id: mapped.id,
+      total_amount: mapped.amount_spent,
+      metadata: { reason: 'visit_update' },
+    });
+
+    if (loyaltySyncResult.error) {
+      return { data: null, error: loyaltySyncResult.error };
+    }
+
+    if (loyaltySyncResult.data && mapped.points_earned !== loyaltySyncResult.data.points) {
+      const { data: correctedRow, error: correctionError } = await supabase
+        .from('customer_visits')
+        .update({ points_earned: loyaltySyncResult.data.points })
+        .eq('id', mapped.id)
+        .select(VISIT_COLUMNS)
+        .single();
+
+      if (correctionError || !correctedRow) {
+        return { data: null, error: correctionError?.message ?? 'Unable to synchronize visit points' };
+      }
+
+      const corrected = mapVisitRow(correctedRow);
+      const metricsResult = await upsertCustomerMetricsFromVisits(corrected.organization_id, corrected.customer_id);
+      if (metricsResult.error) {
+        return { data: null, error: metricsResult.error };
+      }
+
+      return { data: corrected, error: null };
+    }
+
     const metricsResult = await upsertCustomerMetricsFromVisits(mapped.organization_id, mapped.customer_id);
     if (metricsResult.error) {
       return { data: null, error: metricsResult.error };
@@ -348,6 +423,16 @@ export async function archiveCustomerVisit(id: string): Promise<ApiResponse<null
 
     if (error) {
       return { data: null, error: error.message };
+    }
+
+    const loyaltyReverseResult = await reverseVisitPoints(
+      currentResult.data.organization_id,
+      currentResult.data.customer_id,
+      currentResult.data.id,
+    );
+
+    if (loyaltyReverseResult.error) {
+      return { data: null, error: loyaltyReverseResult.error };
     }
 
     const metricsResult = await upsertCustomerMetricsFromVisits(
