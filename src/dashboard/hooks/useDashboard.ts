@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
-import { getDashboardSnapshot, type DashboardSnapshot } from '../services/dashboardService';
+import { getDashboardSummary, type DashboardSummary } from '../services/dashboardService';
 
 export function useDashboard() {
-  const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<DashboardSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadSnapshot() {
-      const { data } = await getDashboardSnapshot();
+      const { data } = await getDashboardSummary();
 
       if (isMounted) {
         setSnapshot(data);

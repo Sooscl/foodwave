@@ -12,6 +12,11 @@ export interface RestaurantRecord {
   status: string;
 }
 
+interface RestaurantMembershipQueryRow {
+  restaurant_id: string;
+  restaurants: RestaurantRecord | null;
+}
+
 function normalizeSlug(value: string, fallback: string): string {
   const base = (value || fallback).trim().toLowerCase();
   const sanitized = base.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -134,6 +139,8 @@ export async function getUserRestaurant(): Promise<ApiResponse<RestaurantRecord 
       return { data: null, error: error.message };
     }
 
+    const membership = data as RestaurantMembershipQueryRow | null;
+    const restaurant = membership?.restaurants ?? null;
 
     return { data: restaurant ?? null, error: null };
   } catch (error) {
@@ -153,7 +160,6 @@ export async function createRestaurant(name: string, slug: string): Promise<ApiR
 
     const organizationId = await getOrganizationForUser(user.id);
     const normalizedSlug = normalizeSlug(slug, name);
-    const restaurant = data?.restaurants as RestaurantRecord | null;
     const { data: existingRestaurant, error: existingRestaurantError } = await supabase
       .from('restaurants')
       .select('id')
@@ -222,7 +228,7 @@ export async function createRestaurant(name: string, slug: string): Promise<ApiR
       return { data: null, error: profileUpdateError.message };
     }
 
-    return { data: restaurant as RestaurantRecord, error: null };
+    return { data: restaurant, error: null };
   } catch (error) {
     return { data: null, error: error instanceof Error ? error.message : 'Unable to create restaurant' };
   }

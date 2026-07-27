@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createCustomer, deleteCustomer, getCustomerById, getCustomerSummary, listCustomers, updateCustomer, type CustomerRecord } from "../crm/services/customerService";
 import {
   LayoutDashboard, Users, CreditCard, Bell, BarChart3, Settings,
@@ -1116,28 +1116,30 @@ function CRMProfileScreen({ customerId, onBack }: { customerId: string; onBack: 
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [walletMessage, setWalletMessage] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+
+  const loadCustomer = useCallback(async () => {
+    setLoading(true);
+    const { data, error: requestError } = await getCustomerById(customerId);
+    if (!mountedRef.current) return;
+    if (requestError || !data) {
+      setError(requestError ?? 'Customer not found');
+      setCustomer(null);
+    } else {
+      setError(null);
+      setCustomer(data);
+    }
+    setLoading(false);
+  }, [customerId]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadCustomer() {
-      setLoading(true);
-      const { data, error } = await getCustomerById(customerId);
-      if (!isMounted) return;
-      if (error || !data) {
-        setError(error ?? 'Customer not found');
-      } else {
-        setCustomer(data);
-      }
-      setLoading(false);
-    }
-
+    mountedRef.current = true;
     void loadCustomer();
 
     return () => {
-      isMounted = false;
+      mountedRef.current = false;
     };
-  }, [customerId]);
+  }, [loadCustomer]);
 
   if (loading) {
     return <div className="text-sm text-slate-400">Loading customer profile...</div>;
@@ -2504,7 +2506,7 @@ function Sidebar({ current, onChange, onLogout }: { current: string; onChange: (
 // ─── App Shell ────────────────────────────────────────────────────────────────
 
 function AppShell({ section, onSectionChange, onLogout }: { section: string; onSectionChange: (s: string) => void; onLogout?: () => Promise<void> | void }) {
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
   const renderContent = () => {
     if (section === "crm" && selectedCustomerId !== null) {

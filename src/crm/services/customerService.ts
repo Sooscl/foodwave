@@ -150,7 +150,18 @@ export async function getCustomerSummary(): Promise<ApiResponse<CustomerSummary>
     const restaurantId = await getCurrentRestaurantId();
 
     if (!restaurantId) {
-      return { data: { totalCustomers: 0, newCustomersThisMonth: 0, vipCustomers: 0, birthdaysThisMonth: 0 }, error: null };
+      return {
+        data: {
+          totalCustomers: 0,
+          newCustomersThisMonth: 0,
+          vipCustomers: 0,
+          customersAtRisk: 0,
+          lostCustomers: 0,
+          birthdaysThisMonth: 0,
+          averageCustomerValue: 0,
+        },
+        error: null,
+      };
     }
 
     const now = new Date();
