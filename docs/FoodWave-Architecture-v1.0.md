@@ -67,7 +67,7 @@ Profiles are the user-facing identity records that represent human users within 
 
 ### 3.3 Organizations
 
-Organizations represent the top-level business entities that own restaurants, subscriptions, campaigns, and team governance. They are the correct level for billing, plan entitlements, and cross-restaurant business structure.
+Organizations represent the top-level business entities that own restaurants, one subscription, campaigns, and team governance. They are the correct level for billing, plan entitlements, and cross-restaurant business structure.
 
 ### 3.4 Restaurants
 
@@ -116,7 +116,7 @@ The modules interact through a shared domain backbone:
 - Authentication identifies the user
 - Profiles provide the user identity record
 - Memberships grant access to organizations and restaurants
-- Organizations own plans, restaurants, and top-level governance
+- Organizations own the subscription boundary, restaurants, and top-level governance
 - Restaurants own local operational entities such as customers, reservations, and wallet assets
 - Marketing, loyalty, CRM, and analytics consume shared business data from the organization and restaurant domains
 - Notifications and AI services act as cross-cutting capabilities that respond to domain events
@@ -156,14 +156,15 @@ Purpose
 - Represent the business tenant or account that owns the restaurant business context.
 
 Responsibilities
-- Own subscriptions and plan entitlements
+- Own one subscription and plan entitlements
 - Contain restaurants and teams
 - Govern business-level operations and reporting
+- Enforce restaurant creation limits based on the active subscription
 
 Relationships
 - One organization has many restaurants
 - One organization has many memberships
-- One organization has one active subscription plan model
+- One organization has one subscription
 - One organization can have many campaigns
 
 Ownership
@@ -423,7 +424,7 @@ Organization
 Cardinality
 - One organization to many restaurants
 - One organization to many memberships
-- One organization to one active subscription model at a time
+- One organization to one subscription
 - One organization to many campaigns
 
 ### 5.2 Restaurant Relationships
@@ -658,13 +659,15 @@ RLS should never become the reason onboarding fails. The architecture must ensur
 
 FoodWave’s subscription model is designed to support the commercial lifecycle of the platform from early-stage operators to enterprise organizations.
 
+The commercial model is organization-first. Each organization has exactly one subscription, and that subscription belongs to the organization. Restaurants do not have their own subscriptions. The subscription is the control point for plan entitlements and restaurant capacity.
+
 ### 9.1 Starter
 
-Designed for small businesses or first-time adopters. Provides the essential capabilities needed to begin using the platform with a single restaurant context.
+Designed for small businesses or first-time adopters. Provides the essential capabilities needed to begin using the platform with a limited restaurant footprint.
 
 ### 9.2 Growth
 
-Designed for restaurants or restaurant groups that need broader operational coverage, stronger engagement, and more advanced automation. Provides access to a wider set of CRM, loyalty, marketing, and analytics capabilities.
+Designed for restaurants or restaurant groups that need broader operational coverage, stronger engagement, and more advanced automation. Provides access to a wider set of CRM, loyalty, marketing, and analytics capabilities and a larger restaurant allowance.
 
 ### 9.3 Pro
 
@@ -674,7 +677,22 @@ Designed for professional operators that need a more powerful platform for multi
 
 Designed for large restaurant groups, franchises, or multi-country organizations. Supports advanced governance, global operations, deeper integrations, and broad commercial flexibility.
 
-### 9.5 Feature Gating
+### 9.5 Subscription Structure
+
+Each subscription stores:
+- plan ID
+- restaurant limit
+- active restaurant count
+- billing cycle
+- status
+
+The plan defines the maximum number of restaurants allowed for the organization. The subscription stores the effective restaurant limit and the current number of active restaurants so the platform can validate restaurant creation before proceeding.
+
+### 9.6 Restaurant Creation Validation
+
+When a restaurant is created, the platform must validate whether the organization’s subscription still has available restaurant capacity. If the restaurant limit has been reached, restaurant creation is rejected until the customer upgrades the plan.
+
+### 9.7 Feature Gating
 
 Feature gating should be implemented through subscription entitlements rather than hard-coded UI checks. The entitlement model should determine whether a tenant can access:
 - advanced analytics
