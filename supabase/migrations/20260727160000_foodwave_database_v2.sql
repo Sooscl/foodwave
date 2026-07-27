@@ -8,8 +8,9 @@ create table if not exists public.profiles (
   full_name text,
   email text not null,
   avatar_url text,
-  locale text not null default 'en',
-  timezone text not null default 'UTC',
+  locale text not null default 'es-CL',
+  timezone text not null default 'America/Santiago',
+  last_login_at timestamptz,
   onboarding_completed boolean not null default false,
   is_deleted boolean not null default false,
   deleted_at timestamptz,
@@ -20,10 +21,13 @@ create table if not exists public.profiles (
 create table if not exists public.organizations (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  legal_name text,
   slug text not null unique,
-  currency text not null default 'EUR',
-  timezone text not null default 'Europe/Lisbon',
-  locale text not null default 'en',
+  tax_id text,
+  industry text,
+  currency text not null default 'CLP',
+  timezone text not null default 'America/Santiago',
+  locale text not null default 'es-CL',
   status text not null default 'active' check (status in ('active','suspended','archived')),
   billing_email text,
   metadata jsonb,
@@ -54,14 +58,16 @@ create table if not exists public.restaurants (
   organization_id uuid not null references public.organizations(id) on delete cascade,
   name text not null,
   slug text not null,
-  currency text not null default 'EUR',
-  timezone text not null default 'Europe/Lisbon',
-  locale text not null default 'en',
+  currency text not null default 'CLP',
+  timezone text not null default 'America/Santiago',
+  locale text not null default 'es-CL',
   status text not null default 'active' check (status in ('active','inactive','archived')),
   address_line_1 text,
   city text,
   country text,
   phone text,
+  logo_url text,
+  cover_url text,
   metadata jsonb,
   is_deleted boolean not null default false,
   deleted_at timestamptz,
@@ -89,13 +95,12 @@ create table if not exists public.restaurant_memberships (
 create table if not exists public.customers (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
-  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
   first_name text,
   last_name text,
   email text,
   phone text,
-  locale text not null default 'en',
-  preferred_currency text not null default 'EUR',
+  locale text not null default 'es-CL',
+  preferred_currency text not null default 'CLP',
   status text not null default 'active' check (status in ('active','inactive','blocked')),
   consent_marketing boolean not null default false,
   consent_sms boolean not null default false,
@@ -107,16 +112,29 @@ create table if not exists public.customers (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.customer_visits (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  customer_id uuid not null references public.customers(id) on delete cascade,
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+visit_date timestamptz not null default now(),  amount numeric(10,2) not null default 0,
+  points_earned integer not null default 0,
+  points_redeemed integer not null default 0,
+  notes text,
+  metadata jsonb,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.wallet_cards (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
-  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
   customer_id uuid not null references public.customers(id) on delete cascade,
   card_type text not null default 'loyalty' check (card_type in ('loyalty','gift','membership','promo')),
-  provider text,
-  external_ref text,
-  status text not null default 'active' check (status in ('active','inactive','expired','revoked','pending')),
-  issued_at timestamptz,
+provider text,
+external_ref text,
+status text not null default 'active' check (
+  status in ('active','inactive','expired','revoked','pending')
+),
   expires_at timestamptz,
   metadata jsonb,
   is_deleted boolean not null default false,
@@ -130,11 +148,14 @@ create table if not exists public.plans (
   code text not null unique,
   name text not null unique,
   description text,
-  max_restaurants integer,
-  max_team_members integer,
+  restaurant_limit integer not null default 1 check (restaurant_limit >= 0),
+  team_member_limit integer not null default 1 check (team_member_limit >= 0),
+  campaign_limit integer not null default 0 check (campaign_limit >= 0),
+  ai_credit_limit integer not null default 0 check (ai_credit_limit >= 0),
+  storage_limit integer not null default 0 check (storage_limit >= 0),
   features jsonb,
   price_monthly numeric(10,2),
-  currency text not null default 'EUR',
+  currency text not null default 'CLP',
   is_active boolean not null default true,
   is_deleted boolean not null default false,
   deleted_at timestamptz,
@@ -146,8 +167,6 @@ create table if not exists public.subscriptions (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null unique references public.organizations(id) on delete cascade,
   plan_id uuid not null references public.plans(id),
-  restaurant_limit integer not null default 1 check (restaurant_limit >= 0),
-  active_restaurant_count integer not null default 0 check (active_restaurant_count >= 0),
   billing_cycle text not null default 'monthly' check (billing_cycle in ('monthly','yearly','custom')),
   status text not null default 'trial' check (status in ('trial','active','past_due','canceled','suspended','expired')),
   starts_at timestamptz,
@@ -158,8 +177,7 @@ create table if not exists public.subscriptions (
   is_deleted boolean not null default false,
   deleted_at timestamptz,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  check (active_restaurant_count <= restaurant_limit)
+  updated_at timestamptz not null default now()
 );
 
 create index if not exists idx_profiles_email on public.profiles (email);
@@ -176,10 +194,12 @@ create index if not exists idx_restaurant_memberships_restaurant on public.resta
 create index if not exists idx_restaurant_memberships_profile on public.restaurant_memberships (profile_id);
 create index if not exists idx_restaurant_memberships_role on public.restaurant_memberships (role);
 create index if not exists idx_customers_org on public.customers (organization_id);
-create index if not exists idx_customers_restaurant on public.customers (restaurant_id);
 create index if not exists idx_customers_email on public.customers (email);
+create index if not exists idx_customer_visits_org on public.customer_visits (organization_id);
+create index if not exists idx_customer_visits_customer on public.customer_visits (customer_id);
+create index if not exists idx_customer_visits_restaurant on public.customer_visits (restaurant_id);
+create index if not exists idx_customer_visits_date on public.customer_visits (visit_date);
 create index if not exists idx_wallet_cards_org on public.wallet_cards (organization_id);
-create index if not exists idx_wallet_cards_restaurant on public.wallet_cards (restaurant_id);
 create index if not exists idx_wallet_cards_customer on public.wallet_cards (customer_id);
 create index if not exists idx_wallet_cards_status on public.wallet_cards (status);
 create index if not exists idx_plans_code on public.plans (code);
