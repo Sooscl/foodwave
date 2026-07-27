@@ -5,9 +5,99 @@ export interface RestaurantRecord {
   id: string;
   name: string;
   slug: string;
-  owner_id: string;
+  organization_id: string;
   currency: string;
   timezone: string;
+  locale: string;
+  status: string;
+}
+
+function normalizeSlug(value: string, fallback: string): string {
+  const base = (value || fallback).trim().toLowerCase();
+  const sanitized = base.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  return sanitized || 'restaurant';
+}
+
+async function ensureProfile(user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }) {
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, onboarding_completed')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+
+  if (profile) {
+    return profile;
+  }
+
+  const { error: createProfileError } = await supabase.from('profiles').insert({
+    id: user.id,
+    email: user.email ?? '',
+    full_name: typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : null,
+    locale: 'es-CL',
+    timezone: 'America/Santiago',
+    onboarding_completed: false,
+  });
+
+  if (createProfileError) {
+    throw new Error(createProfileError.message);
+  }
+
+  return { id: user.id, onboarding_completed: false };
+}
+
+async function getOrganizationForUser(userId: string) {
+  const { data: membership, error: membershipError } = await supabase
+    .from('organization_memberships')
+    .select('organization_id')
+    .eq('profile_id', userId)
+    .eq('is_deleted', false)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (membershipError) {
+    throw new Error(membershipError.message);
+  }
+
+  if (membership?.organization_id) {
+    return membership.organization_id;
+  }
+
+  const organizationSlug = `org-${userId.slice(0, 8)}`;
+
+  const { data: organization, error: organizationError } = await supabase
+    .from('organizations')
+    .insert({
+      name: 'My Organization',
+      slug: organizationSlug,
+      currency: 'CLP',
+      timezone: 'America/Santiago',
+      locale: 'es-CL',
+      status: 'active',
+    })
+    .select('id')
+    .single();
+
+  if (organizationError || !organization) {
+    throw new Error(organizationError?.message ?? 'Unable to create organization');
+  }
+
+  const { error: membershipInsertError } = await supabase.from('organization_memberships').insert({
+    organization_id: organization.id,
+    profile_id: userId,
+    role: 'owner',
+    status: 'active',
+  });
+
+  if (membershipInsertError) {
+    throw new Error(membershipInsertError.message);
+  }
+
+  return organization.id;
 }
 
 export async function getUserRestaurant(): Promise<ApiResponse<RestaurantRecord | null>> {
@@ -20,15 +110,31 @@ export async function getUserRestaurant(): Promise<ApiResponse<RestaurantRecord 
 
     const { data, error } = await supabase
       .from('restaurant_memberships')
-      .select('restaurant_id, restaurants:restaurant_id(id, name, slug, owner_id, currency, timezone)')
+      .select(
+        `
+          restaurant_id,
+          restaurants:restaurant_id(
+            id,
+            name,
+            slug,
+            organization_id,
+            currency,
+            timezone,
+            locale,
+            status
+          )
+        `,
+      )
       .eq('profile_id', user.id)
+      .eq('is_deleted', false)
+      .order('created_at', { ascending: true })
       .maybeSingle();
 
     if (error) {
       return { data: null, error: error.message };
     }
 
-    const restaurant = data?.restaurants as RestaurantRecord | null;
+
     return { data: restaurant ?? null, error: null };
   } catch (error) {
     return { data: null, error: error instanceof Error ? error.message : 'Failed to load restaurant' };
@@ -43,37 +149,80 @@ export async function createRestaurant(name: string, slug: string): Promise<ApiR
       return { data: null, error: 'No authenticated user' };
     }
 
-    const { data: profileData, error: profileError } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
+    await ensureProfile(user);
 
-    if (profileError || !profileData) {
-      return { data: null, error: profileError?.message ?? 'Profile not found' };
+    const organizationId = await getOrganizationForUser(user.id);
+    const normalizedSlug = normalizeSlug(slug, name);
+    const restaurant = data?.restaurants as RestaurantRecord | null;
+    const { data: existingRestaurant, error: existingRestaurantError } = await supabase
+      .from('restaurants')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('slug', normalizedSlug)
+      .eq('is_deleted', false)
+      .maybeSingle();
+
+    if (existingRestaurantError) {
+      return { data: null, error: existingRestaurantError.message };
     }
 
-    const { data, error } = await supabase
+    if (existingRestaurant) {
+      return { data: null, error: 'Restaurant slug already exists' };
+    }
+
+    const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
       .insert({
+        organization_id: organizationId,
         name,
-        slug,
-        owner_id: user.id,
-        currency: 'EUR',
-        timezone: 'Europe/Lisbon',
+        slug: normalizedSlug,
+        currency: 'CLP',
+        timezone: 'America/Santiago',
+        locale: 'es-CL',
+        status: 'active',
       })
-      .select('*')
+      .select('id, name, slug, organization_id, currency, timezone, locale, status')
       .single();
 
-    if (error || !data) {
-      return { data: null, error: error?.message ?? 'Unable to create restaurant' };
+    if (restaurantError || !restaurant) {
+      return { data: null, error: restaurantError?.message ?? 'Unable to create restaurant' };
     }
 
-    await supabase.from('restaurant_memberships').insert({
-      restaurant_id: data.id,
-      profile_id: user.id,
-      role: 'owner',
-    });
+    const { data: existingMembership, error: membershipCheckError } = await supabase
+      .from('restaurant_memberships')
+      .select('id')
+      .eq('restaurant_id', restaurant.id)
+      .eq('profile_id', user.id)
+      .eq('is_deleted', false)
+      .maybeSingle();
 
-    await supabase.from('profiles').update({ onboarding_completed: true }).eq('id', user.id);
+    if (membershipCheckError) {
+      return { data: null, error: membershipCheckError.message };
+    }
 
-    return { data: data as RestaurantRecord, error: null };
+    if (!existingMembership) {
+      const { error: membershipError } = await supabase.from('restaurant_memberships').insert({
+        restaurant_id: restaurant.id,
+        profile_id: user.id,
+        role: 'owner',
+        status: 'active',
+      });
+
+      if (membershipError) {
+        return { data: null, error: membershipError.message };
+      }
+    }
+
+    const { error: profileUpdateError } = await supabase
+      .from('profiles')
+      .update({ onboarding_completed: true })
+      .eq('id', user.id);
+
+    if (profileUpdateError) {
+      return { data: null, error: profileUpdateError.message };
+    }
+
+    return { data: restaurant as RestaurantRecord, error: null };
   } catch (error) {
     return { data: null, error: error instanceof Error ? error.message : 'Unable to create restaurant' };
   }
