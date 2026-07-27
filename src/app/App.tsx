@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createCustomer, deleteCustomer, getCustomerById, getCustomerSummary, listCustomers, updateCustomer, type CustomerRecord } from "../crm/services/customerService";
+import { archiveCustomer, createCustomer, getCustomerById, getCustomersByOrganization, searchCustomers, updateCustomer } from "../crm/services/customerService";
 import {
   LayoutDashboard, Users, CreditCard, Bell, BarChart3, Settings,
   TrendingUp, TrendingDown, Target, QrCode, Gift, Calendar,
@@ -17,6 +17,8 @@ import {
 } from "recharts";
 import { getDashboardSummary, type DashboardSummary } from "../dashboard/services/dashboardService";
 import { createWalletCard, type WalletCardRecord } from "../wallet/services/walletService";
+import { supabase } from "../shared/lib/supabase";
+import type { Customer } from "../shared/types/database";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -889,12 +891,96 @@ function AnalyticsCompare() {
 
 // ─── CRM ──────────────────────────────────────────────────────────────────────
 
+type CustomerRecord = Customer & { customer_status: string | null };
+
+type CustomerSummary = {
+  totalCustomers: number;
+  newCustomersThisMonth: number;
+  vipCustomers: number;
+  customersAtRisk: number;
+  lostCustomers: number;
+  birthdaysThisMonth: number;
+  averageCustomerValue: number;
+};
+
+function getCustomerStatusLabel(customer: Customer): string {
+  if (customer.marketing_segment === "vip") return "VIP";
+  if (customer.marketing_segment === "at_risk") return "At Risk";
+  if (customer.marketing_segment === "lost") return "Lost";
+  if (customer.marketing_segment === "regular") return "Regular";
+  if (customer.marketing_segment === "new") return "New";
+  if (customer.lifecycle_status === "inactive") return "Inactive";
+  if (customer.lifecycle_status === "archived") return "Archived";
+  return "Active";
+}
+
+function toCustomerRecord(customer: Customer): CustomerRecord {
+  return {
+    ...customer,
+    customer_status: getCustomerStatusLabel(customer),
+  };
+}
+
+function buildCustomerSummary(customers: CustomerRecord[]): CustomerSummary {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const newCustomersThisMonth = customers.filter((customer) => {
+    const createdAt = new Date(customer.created_at);
+    return createdAt.getMonth() === currentMonth && createdAt.getFullYear() === currentYear;
+  }).length;
+
+  const birthdaysThisMonth = customers.filter((customer) => {
+    if (!customer.birthday) return false;
+    const birthday = new Date(customer.birthday);
+    return birthday.getMonth() === currentMonth;
+  }).length;
+
+  const totalSpent = customers.reduce((sum, customer) => sum + Number(customer.total_spent ?? 0), 0);
+
+  return {
+    totalCustomers: customers.length,
+    newCustomersThisMonth,
+    vipCustomers: customers.filter((customer) => customer.marketing_segment === "vip").length,
+    customersAtRisk: customers.filter((customer) => customer.marketing_segment === "at_risk").length,
+    lostCustomers: customers.filter((customer) => customer.marketing_segment === "lost").length,
+    birthdaysThisMonth,
+    averageCustomerValue: customers.length > 0 ? totalSpent / customers.length : 0,
+  };
+}
+
+async function getCurrentOrganizationId(): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("organization_memberships")
+    .select("organization_id")
+    .eq("profile_id", user.id)
+    .eq("is_deleted", false)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    return null;
+  }
+
+  return data?.organization_id ?? null;
+}
+
 function CRMCreateEditModal({
   customer,
+  organizationId,
   onClose,
   onSaved,
 }: {
   customer?: CustomerRecord | null;
+  organizationId: string | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -922,15 +1008,24 @@ function CRMCreateEditModal({
       phone: phone || null,
       birthday: birthday || null,
       notes: notes || null,
-      tags: tags.split(",").map(tag => tag.trim()).filter(Boolean),
+      tags: tags.split(",").map((tag: string) => tag.trim()).filter(Boolean),
       total_visits: Number(totalVisits) || 0,
       total_spent: Number(totalSpent) || 0,
       last_visit: customer?.last_visit ?? null,
     };
 
+    if (!customer?.id && !organizationId) {
+      setLoading(false);
+      setError("No organization linked to this account");
+      return;
+    }
+
     const result = customer?.id
       ? await updateCustomer(customer.id, payload)
-      : await createCustomer(payload as Omit<CustomerRecord, 'id' | 'created_at' | 'updated_at'>);
+      : await createCustomer({
+          organization_id: organizationId as string,
+          ...payload,
+        });
 
     setLoading(false);
 
@@ -989,22 +1084,43 @@ function CRMCreateEditModal({
 
 function CRMScreen({ onViewProfile }: { onViewProfile: (id: string) => void }) {
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
-  const [summary, setSummary] = useState<{ totalCustomers: number; newCustomersThisMonth: number; vipCustomers: number; customersAtRisk: number; lostCustomers: number; birthdaysThisMonth: number; averageCustomerValue: number } | null>(null);
+  const [summary, setSummary] = useState<CustomerSummary | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
-    const [customerResult, summaryResult] = await Promise.all([listCustomers(search), getCustomerSummary()]);
-    if (customerResult.error || summaryResult.error) {
-      setError(customerResult.error ?? summaryResult.error ?? 'Unable to load CRM data');
-    } else {
-      setCustomers(customerResult.data ?? []);
-      setSummary(summaryResult.data ?? null);
-      setError(null);
+    const resolvedOrganizationId = organizationId ?? await getCurrentOrganizationId();
+
+    if (!resolvedOrganizationId) {
+      setCustomers([]);
+      setSummary(buildCustomerSummary([]));
+      setError('No organization linked to this account');
+      setLoading(false);
+      return;
     }
+
+    if (!organizationId) {
+      setOrganizationId(resolvedOrganizationId);
+    }
+
+    const customerResult = search.trim()
+      ? await searchCustomers(resolvedOrganizationId, search)
+      : await getCustomersByOrganization(resolvedOrganizationId);
+
+    if (customerResult.error) {
+      setError(customerResult.error ?? 'Unable to load CRM data');
+      setLoading(false);
+      return;
+    }
+
+    const normalizedCustomers = (customerResult.data ?? []).map((customer) => toCustomerRecord(customer));
+    setCustomers(normalizedCustomers);
+    setSummary(buildCustomerSummary(normalizedCustomers));
+    setError(null);
     setLoading(false);
   };
 
@@ -1013,7 +1129,7 @@ function CRMScreen({ onViewProfile }: { onViewProfile: (id: string) => void }) {
   }, [search]);
 
   const handleDelete = async (customerId: string) => {
-    const result = await deleteCustomer(customerId);
+    const result = await archiveCustomer(customerId);
     if (result.error) {
       setError(result.error);
       return;
@@ -1105,7 +1221,7 @@ function CRMScreen({ onViewProfile }: { onViewProfile: (id: string) => void }) {
         </div>
       </Card>
 
-      {showModal && <CRMCreateEditModal onClose={() => setShowModal(false)} onSaved={() => { void loadData(); }} />}
+      {showModal && <CRMCreateEditModal organizationId={organizationId} onClose={() => setShowModal(false)} onSaved={() => { void loadData(); }} />}
     </div>
   );
 }
@@ -1120,14 +1236,14 @@ function CRMProfileScreen({ customerId, onBack }: { customerId: string; onBack: 
 
   const loadCustomer = useCallback(async () => {
     setLoading(true);
-    const { data, error: requestError } = await getCustomerById(customerId);
+      const { data, error: requestError } = await getCustomerById(customerId);
     if (!mountedRef.current) return;
     if (requestError || !data) {
       setError(requestError ?? 'Customer not found');
       setCustomer(null);
     } else {
       setError(null);
-      setCustomer(data);
+        setCustomer(toCustomerRecord(data));
     }
     setLoading(false);
   }, [customerId]);
@@ -1218,7 +1334,7 @@ function CRMProfileScreen({ customerId, onBack }: { customerId: string; onBack: 
           <div className="mt-4 pt-4 border-t border-white/6">
             <p className="text-slate-600 text-xs uppercase tracking-wide mb-2">Tags</p>
             <div className="flex flex-wrap gap-2">
-              {customer.tags.length > 0 ? customer.tags.map(tag => <Badge key={tag}>{tag}</Badge>) : <span className="text-slate-500 text-sm">No tags</span>}
+              {customer.tags.length > 0 ? customer.tags.map((tag: string) => <Badge key={tag}>{tag}</Badge>) : <span className="text-slate-500 text-sm">No tags</span>}
             </div>
           </div>
         </Card>
@@ -1236,7 +1352,7 @@ function CRMProfileScreen({ customerId, onBack }: { customerId: string; onBack: 
         </div>
       </div>
 
-      {showModal && <CRMCreateEditModal customer={customer} onClose={() => setShowModal(false)} onSaved={() => { void loadCustomer(); }} />}
+      {showModal && <CRMCreateEditModal customer={customer} organizationId={customer.organization_id} onClose={() => setShowModal(false)} onSaved={() => { void loadCustomer(); }} />}
     </div>
   );
 }
