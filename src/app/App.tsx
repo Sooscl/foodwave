@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createCustomer, deleteCustomer, getCustomerById, getCustomerSummary, listCustomers, updateCustomer, type CustomerRecord } from "../crm/services/customerService";
 import {
   LayoutDashboard, Users, CreditCard, Bell, BarChart3, Settings,
   TrendingUp, TrendingDown, Target, QrCode, Gift, Calendar,
@@ -14,6 +15,8 @@ import {
   Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Legend, ComposedChart
 } from "recharts";
+import { getDashboardSummary, type DashboardSummary } from "../dashboard/services/dashboardService";
+import { createWalletCard, type WalletCardRecord } from "../wallet/services/walletService";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -199,8 +202,8 @@ function TabBar({ tabs, active, onChange }: { tabs: string[]; active: string; on
   );
 }
 
-function FWInput({ label, placeholder, type = "text", defaultValue }: {
-  label?: string; placeholder?: string; type?: string; defaultValue?: string;
+function FWInput({ label, placeholder, type = "text", defaultValue, onChange }: {
+  label?: string; placeholder?: string; type?: string; defaultValue?: string; onChange?: (value: string) => void;
 }) {
   return (
     <div>
@@ -209,6 +212,7 @@ function FWInput({ label, placeholder, type = "text", defaultValue }: {
         type={type}
         placeholder={placeholder}
         defaultValue={defaultValue}
+        onChange={event => onChange?.(event.target.value)}
         className="w-full bg-[#1E293B] border border-white/8 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-[#FF6B35]/50 transition-all"
       />
     </div>
@@ -423,12 +427,52 @@ function ForgotPasswordScreen({ onBack }: { onBack: () => void }) {
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 function DashboardScreen() {
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadSummary() {
+      setLoading(true);
+      const { data, error } = await getDashboardSummary();
+
+      if (!isMounted) return;
+
+      if (error || !data) {
+        setError(error ?? 'Unable to load dashboard data');
+        setSummary(null);
+      } else {
+        setSummary(data);
+        setError(null);
+      }
+
+      setLoading(false);
+    }
+
+    void loadSummary();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const headerName = summary?.loggedInUser?.split(" ")[0] ?? "there";
+  const hasRestaurant = Boolean(summary?.restaurantName);
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white tracking-tight">Good evening, João 👋</h1>
-          <p className="text-slate-400 text-sm mt-1">Here's what's happening at Restaurante Lisboa today.</p>
+          <h1 className="text-2xl font-semibold text-white tracking-tight">Good evening, {loading ? "there" : headerName} 👋</h1>
+          <p className="text-slate-400 text-sm mt-1">
+            {loading
+              ? "Loading your restaurant overview..."
+              : hasRestaurant
+                ? `Here's what's happening at ${summary?.restaurantName} today.`
+                : "Create your first restaurant to populate this dashboard."}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="px-3 py-1.5 rounded-lg bg-emerald-500/12 border border-emerald-500/20 flex items-center gap-2">
@@ -439,11 +483,35 @@ function DashboardScreen() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Today's Revenue" value="€4,280" sub="vs yesterday" trend={12.4} icon={DollarSign} />
-        <StatCard label="New Customers" value="38" sub="vs last week" trend={8.2} icon={Users} accent="#10B981" />
-        <StatCard label="Returning" value="124" sub="vs last week" trend={5.6} icon={TrendingUp} accent="#3B82F6" />
-        <StatCard label="Active Campaigns" value="4" sub="Meta + Google" icon={Target} accent="#8B5CF6" />
+        <StatCard label="Restaurant" value={loading ? "Loading..." : summary?.restaurantName ?? "No restaurant"} sub="Current workspace" icon={Building2} />
+        <StatCard label="Current Plan" value={loading ? "Loading..." : summary?.plan ?? "—"} sub="Subscription tier" icon={Crown} accent="#10B981" />
+        <StatCard label="Logged In User" value={loading ? "Loading..." : summary?.loggedInUser ?? "—"} sub="Account owner" icon={Users} accent="#3B82F6" />
+        <StatCard label="Total Users" value={loading ? "Loading..." : String(summary?.totalUsers ?? 0)} sub="Restaurant members" icon={Target} accent="#8B5CF6" />
       </div>
+
+      <Card className="p-5">
+        <SectionHeader title="Restaurant Snapshot" subtitle="Live counts from your workspace" />
+        {error ? (
+          <p className="text-sm text-slate-400">{error}</p>
+        ) : loading ? (
+          <p className="text-sm text-slate-400">Loading live dashboard metrics...</p>
+        ) : !hasRestaurant ? (
+          <div className="rounded-xl border border-white/8 bg-white/3 p-4 text-sm text-slate-400">
+            No restaurant is linked to this account yet. Complete onboarding to unlock the full dashboard.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-white/8 bg-white/3 p-4">
+              <p className="text-slate-500 text-xs uppercase tracking-wide">Total Customers</p>
+              <p className="mt-2 text-2xl font-semibold text-white">{summary?.totalCustomers ?? 0}</p>
+            </div>
+            <div className="rounded-xl border border-white/8 bg-white/3 p-4">
+              <p className="text-slate-500 text-xs uppercase tracking-wide">Total Campaigns</p>
+              <p className="mt-2 text-2xl font-semibold text-white">{summary?.totalCampaigns ?? 0}</p>
+            </div>
+          </div>
+        )}
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2 p-5">
@@ -821,31 +889,156 @@ function AnalyticsCompare() {
 
 // ─── CRM ──────────────────────────────────────────────────────────────────────
 
-function CRMScreen({ onViewProfile }: { onViewProfile: (id: number) => void }) {
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("All");
+function CRMCreateEditModal({
+  customer,
+  onClose,
+  onSaved,
+}: {
+  customer?: CustomerRecord | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [firstName, setFirstName] = useState(customer?.first_name ?? "");
+  const [lastName, setLastName] = useState(customer?.last_name ?? "");
+  const [email, setEmail] = useState(customer?.email ?? "");
+  const [phone, setPhone] = useState(customer?.phone ?? "");
+  const [birthday, setBirthday] = useState(customer?.birthday ?? "");
+  const [notes, setNotes] = useState(customer?.notes ?? "");
+  const [tags, setTags] = useState((customer?.tags ?? []).join(", "));
+  const [totalVisits, setTotalVisits] = useState(String(customer?.total_visits ?? 0));
+  const [totalSpent, setTotalSpent] = useState(String(customer?.total_spent ?? 0));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = CUSTOMERS.filter(c => {
-    const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === "All" || c.status === filter;
-    return matchSearch && matchFilter;
-  });
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    const payload = {
+      first_name: firstName,
+      last_name: lastName,
+      email: email || null,
+      phone: phone || null,
+      birthday: birthday || null,
+      notes: notes || null,
+      tags: tags.split(",").map(tag => tag.trim()).filter(Boolean),
+      total_visits: Number(totalVisits) || 0,
+      total_spent: Number(totalSpent) || 0,
+      last_visit: customer?.last_visit ?? null,
+    };
+
+    const result = customer?.id
+      ? await updateCustomer(customer.id, payload)
+      : await createCustomer(payload as Omit<CustomerRecord, 'id' | 'created_at' | 'updated_at'>);
+
+    setLoading(false);
+
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+
+    onSaved();
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 px-4">
+      <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#111827] p-6 shadow-2xl">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-white font-semibold">{customer ? "Edit customer" : "Create customer"}</h3>
+            <p className="text-slate-500 text-sm">Keep the customer profile up to date.</p>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-white">✕</button>
+        </div>
+
+        {error && <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</div>}
+
+        <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleSubmit}>
+          <FWInput label="First name" placeholder="First name" defaultValue={firstName} onChange={(value) => setFirstName(value)} />
+          <FWInput label="Last name" placeholder="Last name" defaultValue={lastName} onChange={(value) => setLastName(value)} />
+          <FWInput label="Email" type="email" placeholder="customer@email.com" defaultValue={email} onChange={(value) => setEmail(value)} />
+          <FWInput label="Phone" placeholder="Phone" defaultValue={phone} onChange={(value) => setPhone(value)} />
+          <FWInput label="Birthday" type="date" defaultValue={birthday} onChange={(value) => setBirthday(value)} />
+          <FWInput label="Total visits" type="number" defaultValue={String(totalVisits)} onChange={(value) => setTotalVisits(value)} />
+          <FWInput label="Total spent" type="number" defaultValue={String(totalSpent)} onChange={(value) => setTotalSpent(value)} />
+          <FWInput label="Tags" placeholder="VIP, Birthday Club" defaultValue={tags} onChange={(value) => setTags(value)} />
+          <div className="md:col-span-2">
+            <label className="mb-1.5 block text-xs font-medium text-slate-400 uppercase tracking-wide">Notes</label>
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              className="w-full bg-[#1E293B] border border-white/8 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-[#FF6B35]/50 transition-all"
+              rows={4}
+              placeholder="Notes"
+            />
+          </div>
+          <div className="md:col-span-2 flex justify-end gap-2">
+            <button type="button" onClick={onClose} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300">Cancel</button>
+            <button type="submit" disabled={loading} className="rounded-lg bg-[#FF6B35] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+              {loading ? "Saving..." : customer ? "Save changes" : "Create customer"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CRMScreen({ onViewProfile }: { onViewProfile: (id: string) => void }) {
+  const [customers, setCustomers] = useState<CustomerRecord[]>([]);
+  const [summary, setSummary] = useState<{ totalCustomers: number; newCustomersThisMonth: number; vipCustomers: number; customersAtRisk: number; lostCustomers: number; birthdaysThisMonth: number; averageCustomerValue: number } | null>(null);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+
+  const loadData = async () => {
+    setLoading(true);
+    const [customerResult, summaryResult] = await Promise.all([listCustomers(search), getCustomerSummary()]);
+    if (customerResult.error || summaryResult.error) {
+      setError(customerResult.error ?? summaryResult.error ?? 'Unable to load CRM data');
+    } else {
+      setCustomers(customerResult.data ?? []);
+      setSummary(summaryResult.data ?? null);
+      setError(null);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    void loadData();
+  }, [search]);
+
+  const handleDelete = async (customerId: string) => {
+    const result = await deleteCustomer(customerId);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    void loadData();
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-white tracking-tight">CRM</h1>
-          <p className="text-slate-400 text-sm mt-1">{CUSTOMERS.length} customers · 2 VIP · 1 at risk</p>
+          <p className="text-slate-400 text-sm mt-1">
+            {summary ? `${summary.totalCustomers} customers · ${summary.vipCustomers} VIP · ${summary.birthdaysThisMonth} birthdays this month` : 'Loading CRM summary...'}
+          </p>
         </div>
-        <Btn variant="primary"><Plus size={13} /> Add Customer</Btn>
+        <Btn variant="primary" onClick={() => setShowModal(true)}><Plus size={13} /> Add Customer</Btn>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Customers" value="8" icon={Users} />
-        <StatCard label="VIP Members" value="2" sub="top spenders" icon={Crown} accent="#F59E0B" />
-        <StatCard label="Avg. LTV" value="€2,081" icon={DollarSign} accent="#10B981" />
-        <StatCard label="At Risk" value="1" sub="30+ days inactive" icon={AlertCircle} accent="#EF4444" />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard label="VIP Customers" value={summary ? String(summary.vipCustomers) : "—"} icon={Crown} accent="#F59E0B" />
+        <StatCard label="Customers at Risk" value={summary ? String(summary.customersAtRisk) : "—"} icon={AlertCircle} accent="#EF4444" />
+        <StatCard label="Lost Customers" value={summary ? String(summary.lostCustomers) : "—"} icon={RefreshCw} accent="#8B5CF6" />
+        <StatCard label="Birthdays This Month" value={summary ? String(summary.birthdaysThisMonth) : "—"} sub="celebrations" icon={Calendar} accent="#10B981" />
+        <StatCard label="Average Customer Value" value={summary ? `€${summary.averageCustomerValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "—"} sub="per customer" icon={DollarSign} accent="#FF6B35" />
       </div>
 
       <Card>
@@ -859,74 +1052,118 @@ function CRMScreen({ onViewProfile }: { onViewProfile: (id: number) => void }) {
               className="w-full bg-white/4 border border-white/6 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-[#FF6B35]/40 transition-all"
             />
           </div>
-          <div className="flex gap-1 flex-wrap">
-            {["All", "VIP", "Regular", "New", "At Risk"].map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${filter === f ? "bg-[#FF6B35] text-white" : "text-slate-400 hover:text-white hover:bg-white/6"}`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px]">
-            <thead>
-              <tr className="border-b border-white/4">
-                {["Customer", "Status", "Visits", "LTV", "Points", "Last Visit", "Birthday", ""].map(h => (
-                  <th key={h} className="text-left text-xs font-medium text-slate-600 px-4 py-3 uppercase tracking-wide">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/4">
-              {filtered.map(c => (
-                <tr key={c.id} onClick={() => onViewProfile(c.id)} className="hover:bg-white/2 cursor-pointer transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={c.name} size="sm" />
-                      <div>
-                        <p className="text-white text-sm font-medium">{c.name}</p>
-                        <p className="text-slate-500 text-xs">{c.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant={c.status === "VIP" ? "orange" : c.status === "At Risk" ? "danger" : c.status === "New" ? "info" : "default"}>
-                      {c.status === "VIP" && <Crown size={9} />}
-                      {c.status}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-300">{c.visits}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-white">€{c.ltv.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-slate-400">{c.points.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-slate-400">{c.lastVisit}</td>
-                  <td className="px-4 py-3 text-sm text-slate-400">{c.birthday}</td>
-                  <td className="px-4 py-3">
-                    <button className="text-slate-600 hover:text-white p-1 rounded transition-colors">
-                      <MoreHorizontal size={14} />
-                    </button>
-                  </td>
+          {loading ? (
+            <div className="p-5 text-sm text-slate-400">Loading customers...</div>
+          ) : error ? (
+            <div className="p-5 text-sm text-red-300">{error}</div>
+          ) : customers.length === 0 ? (
+            <div className="p-5 text-sm text-slate-400">No customers found for this restaurant yet.</div>
+          ) : (
+            <table className="w-full min-w-[700px]">
+              <thead>
+                <tr className="border-b border-white/4">
+                  {['Customer', 'Contact', 'Status', 'Visits', 'Spent', 'Tags', 'Last Visit', ''].map(h => (
+                    <th key={h} className="text-left text-xs font-medium text-slate-600 px-4 py-3 uppercase tracking-wide">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-white/4">
+                {customers.map(customer => (
+                  <tr key={customer.id} className="hover:bg-white/2 transition-colors">
+                    <td className="px-4 py-3">
+                      <button onClick={() => onViewProfile(customer.id)} className="flex items-center gap-3 text-left">
+                        <Avatar name={`${customer.first_name} ${customer.last_name}`} size="sm" />
+                        <div>
+                          <p className="text-white text-sm font-medium">{customer.first_name} {customer.last_name}</p>
+                          <p className="text-slate-500 text-xs">{customer.email || 'No email'}</p>
+                        </div>
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-400">{customer.phone || '—'}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={customer.customer_status === 'VIP' ? 'orange' : customer.customer_status === 'At Risk' ? 'danger' : customer.customer_status === 'Lost' ? 'warning' : 'success'}>
+                        {customer.customer_status || 'Active'}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-300">{customer.total_visits}</td>
+                    <td className="px-4 py-3 text-sm text-white">€{Number(customer.total_spent).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-sm text-slate-400">{customer.tags.join(', ') || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-400">{customer.last_visit ? new Date(customer.last_visit).toLocaleDateString() : '—'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => onViewProfile(customer.id)} className="text-slate-400 hover:text-white">View</button>
+                        <button onClick={() => handleDelete(customer.id)} className="text-red-400 hover:text-red-300">Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </Card>
+
+      {showModal && <CRMCreateEditModal onClose={() => setShowModal(false)} onSaved={() => { void loadData(); }} />}
     </div>
   );
 }
 
-function CRMProfileScreen({ customerId, onBack }: { customerId: number; onBack: () => void }) {
-  const customer = CUSTOMERS.find(c => c.id === customerId) || CUSTOMERS[0];
-  const visitHistory = [
-    { date: "Jul 26, 2026", items: "Truffle Risotto, Tiramisu", amount: "€84", table: "Table 8" },
-    { date: "Jul 19, 2026", items: "Salmon Tartare, Wagyu Burger", amount: "€112", table: "Table 12" },
-    { date: "Jul 12, 2026", items: "Tasting Menu (6 courses)", amount: "€180", table: "Table 4" },
-    { date: "Jul 4, 2026", items: "Lobster Bisque, Grilled Sea Bass", amount: "€96", table: "Table 8" },
-    { date: "Jun 28, 2026", items: "Truffle Risotto, Chocolate Fondant", amount: "€78", table: "Table 6" },
-  ];
+function CRMProfileScreen({ customerId, onBack }: { customerId: string; onBack: () => void }) {
+  const [customer, setCustomer] = useState<CustomerRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [walletMessage, setWalletMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCustomer() {
+      setLoading(true);
+      const { data, error } = await getCustomerById(customerId);
+      if (!isMounted) return;
+      if (error || !data) {
+        setError(error ?? 'Customer not found');
+      } else {
+        setCustomer(data);
+      }
+      setLoading(false);
+    }
+
+    void loadCustomer();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [customerId]);
+
+  if (loading) {
+    return <div className="text-sm text-slate-400">Loading customer profile...</div>;
+  }
+
+  if (error || !customer) {
+    return <div className="text-sm text-red-300">{error ?? 'Customer not found'}</div>;
+  }
+
+  const handleCreateWalletCard = async () => {
+    if (!customer) return;
+
+    setWalletMessage(null);
+    const result = await createWalletCard({
+      customer_id: customer.id,
+      pass_identifier: `fw-${customer.id}`,
+      platform: 'Apple Wallet',
+    });
+
+    if (result.error) {
+      setWalletMessage(result.error);
+      return;
+    }
+
+    setWalletMessage('Wallet pass record prepared for Apple Wallet integration.');
+  };
 
   return (
     <div className="space-y-6">
@@ -935,13 +1172,12 @@ function CRMProfileScreen({ customerId, onBack }: { customerId: number; onBack: 
           <ChevronLeft size={17} />
         </button>
         <div>
-          <h1 className="text-2xl font-semibold text-white tracking-tight">{customer.name}</h1>
-          <p className="text-slate-400 text-sm">Customer · {customer.city}</p>
+          <h1 className="text-2xl font-semibold text-white tracking-tight">{customer.first_name} {customer.last_name}</h1>
+          <p className="text-slate-400 text-sm">Customer profile</p>
         </div>
         <div className="ml-auto flex gap-2">
-          <Btn variant="secondary" size="sm"><Mail size={12} /> Email</Btn>
-          <Btn variant="secondary" size="sm"><Send size={12} /> Push</Btn>
-          <Btn variant="primary" size="sm"><Gift size={12} /> Give Reward</Btn>
+          <Btn variant="secondary" size="sm" onClick={() => setShowModal(true)}><Edit size={12} /> Edit</Btn>
+          <Btn variant="secondary" size="sm" onClick={() => { void handleCreateWalletCard(); }}><CreditCard size={12} /> Wallet</Btn>
         </div>
       </div>
 
@@ -949,23 +1185,27 @@ function CRMProfileScreen({ customerId, onBack }: { customerId: number; onBack: 
         <Card className="p-5">
           <div className="text-center mb-5">
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#FF6B35] to-[#e55a24] flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4 shadow-lg shadow-orange-500/20">
-              {customer.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+              {`${customer.first_name} ${customer.last_name}`.split(" ").map(n => n[0]).join("").slice(0, 2)}
             </div>
-            <h3 className="text-white font-semibold text-lg">{customer.name}</h3>
-            <p className="text-slate-500 text-sm">{customer.email}</p>
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <Badge variant={customer.status === "VIP" ? "orange" : customer.status === "At Risk" ? "danger" : "default"}>
-                {customer.status === "VIP" && <Crown size={9} />}
-                {customer.status}
+            <h3 className="text-white font-semibold text-lg">{customer.first_name} {customer.last_name}</h3>
+            <p className="text-slate-500 text-sm">{customer.email || 'No email provided'}</p>
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <Badge variant={customer.customer_status === 'VIP' ? 'orange' : customer.customer_status === 'At Risk' ? 'danger' : customer.customer_status === 'Lost' ? 'warning' : 'success'}>
+                {customer.customer_status || 'Active'}
+              </Badge>
+              <Badge>
+                Score {customer.customer_score ?? 0}
               </Badge>
             </div>
           </div>
           <div className="space-y-3 border-t border-white/6 pt-4">
             {[
-              { icon: Phone, text: customer.phone },
-              { icon: Calendar, text: `Birthday: ${customer.birthday}` },
-              { icon: MapPin, text: customer.city },
-              { icon: Coffee, text: `Fav: ${customer.favoriteItem}` },
+              { icon: Phone, text: customer.phone || 'No phone provided' },
+              { icon: Calendar, text: customer.birthday ? `Birthday: ${new Date(customer.birthday).toLocaleDateString()}` : 'Birthday: —' },
+              { icon: DollarSign, text: `Spent: €${Number(customer.total_spent).toLocaleString()}` },
+              { icon: Utensils, text: `Visits: ${customer.total_visits}` },
+              { icon: TrendingUp, text: `Avg. ticket: €${Number(customer.average_ticket ?? 0).toLocaleString()}` },
+              { icon: Award, text: `Lifetime value: €${Number(customer.lifetime_value ?? 0).toLocaleString()}` },
             ].map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-3">
                 <Icon size={13} className="text-slate-600 flex-shrink-0" />
@@ -976,41 +1216,25 @@ function CRMProfileScreen({ customerId, onBack }: { customerId: number; onBack: 
           <div className="mt-4 pt-4 border-t border-white/6">
             <p className="text-slate-600 text-xs uppercase tracking-wide mb-2">Tags</p>
             <div className="flex flex-wrap gap-2">
-              {customer.tags.map(tag => <Badge key={tag}>{tag}</Badge>)}
-              <button className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs text-slate-600 border border-dashed border-white/12 hover:border-white/25 transition-colors">
-                <Plus size={9} /> Add
-              </button>
+              {customer.tags.length > 0 ? customer.tags.map(tag => <Badge key={tag}>{tag}</Badge>) : <span className="text-slate-500 text-sm">No tags</span>}
             </div>
           </div>
         </Card>
 
         <div className="lg:col-span-2 space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <StatCard label="Total Visits" value={String(customer.visits)} icon={Utensils} />
-            <StatCard label="Lifetime Value" value={`€${customer.ltv.toLocaleString()}`} icon={DollarSign} accent="#10B981" />
-            <StatCard label="Points" value={customer.points.toLocaleString()} icon={Gift} accent="#8B5CF6" />
-          </div>
-
           <Card className="p-5">
-            <SectionHeader title="Visit History" subtitle={`${customer.visits} total visits`} />
-            <div className="space-y-2">
-              {visitHistory.map((v, i) => (
-                <div key={i} className="flex items-start gap-4 p-3 bg-white/3 rounded-xl hover:bg-white/5 transition-all">
-                  <div className="w-9 h-9 rounded-xl bg-[#FF6B35]/10 flex items-center justify-center flex-shrink-0">
-                    <Utensils size={13} className="text-[#FF6B35]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium">{v.date}</p>
-                    <p className="text-slate-400 text-xs truncate">{v.items}</p>
-                    <p className="text-slate-600 text-xs">{v.table}</p>
-                  </div>
-                  <span className="text-white font-semibold text-sm">{v.amount}</span>
-                </div>
-              ))}
-            </div>
+            <SectionHeader title="Notes" subtitle="Customer context" />
+            <p className="text-slate-400 text-sm">{customer.notes || 'No notes yet.'}</p>
           </Card>
+          {walletMessage && (
+            <Card className="p-4">
+              <p className="text-sm text-slate-300">{walletMessage}</p>
+            </Card>
+          )}
         </div>
       </div>
+
+      {showModal && <CRMCreateEditModal customer={customer} onClose={() => setShowModal(false)} onSaved={() => { void loadCustomer(); }} />}
     </div>
   );
 }
@@ -2217,7 +2441,7 @@ const NAV_SECTIONS = [
   },
 ];
 
-function Sidebar({ current, onChange }: { current: string; onChange: (s: string) => void }) {
+function Sidebar({ current, onChange, onLogout }: { current: string; onChange: (s: string) => void; onLogout?: () => Promise<void> | void }) {
   return (
     <div className="fixed left-0 top-0 h-full w-56 bg-[#111827] border-r border-white/6 flex flex-col z-20">
       <div className="p-5 border-b border-white/6">
@@ -2258,7 +2482,11 @@ function Sidebar({ current, onChange }: { current: string; onChange: (s: string)
       </div>
 
       <div className="p-4 border-t border-white/6">
-        <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/4 cursor-pointer transition-all group">
+        <button
+          type="button"
+          onClick={() => { void onLogout?.(); }}
+          className="flex w-full items-center gap-3 p-2 rounded-xl hover:bg-white/4 cursor-pointer transition-all group text-left"
+        >
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#FF6B35] to-[#e55a24] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
             JS
           </div>
@@ -2267,7 +2495,7 @@ function Sidebar({ current, onChange }: { current: string; onChange: (s: string)
             <p className="text-slate-600 text-xs">Owner · Admin</p>
           </div>
           <LogOut size={13} className="text-slate-600 group-hover:text-slate-400 transition-colors" />
-        </div>
+        </button>
       </div>
     </div>
   );
@@ -2275,7 +2503,7 @@ function Sidebar({ current, onChange }: { current: string; onChange: (s: string)
 
 // ─── App Shell ────────────────────────────────────────────────────────────────
 
-function AppShell({ section, onSectionChange }: { section: string; onSectionChange: (s: string) => void }) {
+function AppShell({ section, onSectionChange, onLogout }: { section: string; onSectionChange: (s: string) => void; onLogout?: () => Promise<void> | void }) {
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
 
   const renderContent = () => {
@@ -2296,7 +2524,7 @@ function AppShell({ section, onSectionChange }: { section: string; onSectionChan
 
   return (
     <div className="min-h-screen bg-[#0F172A]">
-      <Sidebar current={section} onChange={s => { onSectionChange(s); setSelectedCustomerId(null); }} />
+      <Sidebar current={section} onChange={s => { onSectionChange(s); setSelectedCustomerId(null); }} onLogout={onLogout} />
       <div className="ml-56 p-7 min-h-screen">
         <div className="max-w-[1200px]">
           {renderContent()}
@@ -2308,12 +2536,12 @@ function AppShell({ section, onSectionChange }: { section: string; onSectionChan
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
-export default function App() {
-  const [auth, setAuth] = useState<"login" | "register" | "forgot" | "app">("login");
+export default function App({ onLogout }: { onLogout?: () => Promise<void> | void }) {
+  const [auth, setAuth] = useState<"login" | "register" | "forgot" | "app">("app");
   const [section, setSection] = useState("dashboard");
 
   if (auth === "register") return <RegisterScreen onBack={() => setAuth("login")} onLogin={() => setAuth("app")} />;
   if (auth === "forgot") return <ForgotPasswordScreen onBack={() => setAuth("login")} />;
   if (auth === "login") return <LoginScreen onLogin={() => setAuth("app")} onRegister={() => setAuth("register")} onForgot={() => setAuth("forgot")} />;
-  return <AppShell section={section} onSectionChange={setSection} />;
+  return <AppShell section={section} onSectionChange={setSection} onLogout={onLogout} />;
 }
