@@ -1,0 +1,405 @@
+﻿\src\auth\routes.ts:3 - authRoutes
+\src\automation\index.ts:12 - RuleEvaluationDetail
+\src\automation\index.ts:19 - RuleEvaluationResult
+\src\automation\index.ts:24 - TriggerExecutionContext
+\src\automation\index.ts:30 - ActionExecutionContext
+\src\automation\index.ts:38 - ITriggerPlugin
+\src\automation\index.ts:43 - IActionPlugin
+\src\automation\index.ts:48 - IRuleEvaluator
+\src\automation\index.ts:52 - IIntegrationAdapter
+\src\automation\index.ts:56 - IAutomationRepository
+\src\automation\index.ts:78 - DomainEventHandler
+\src\automation\index.ts:80 - IEventBus
+\src\automation\index.ts:3 - TriggerRegistry
+\src\automation\index.ts:19 - ActionRegistry
+\src\automation\index.ts:4 - InternalEventBus
+\src\automation\index.ts:27 - AutomationEngine
+\src\automation\index.ts:4 - DomainEventPublisher
+\src\automation\index.ts:1 - DomainEvent
+\src\automation\index.ts:10 - TriggerDefinition
+\src\automation\index.ts:19 - ConditionDefinition
+\src\automation\index.ts:29 - ActionDefinition
+\src\automation\index.ts:39 - ConsumerDefinition
+\src\automation\index.ts:50 - AutomationBundle
+\src\automation\index.ts:57 - AutomationExecutionStatus
+\src\automation\index.ts:59 - ActionResult
+\src\automation\index.ts:66 - AutomationExecutionRecord
+\src\automation\index.ts:78 - AutomationLogPayload
+\src\automation\index.ts:101 - AutomationExecutionResult
+\src\campaigns\index.ts:17 - useCampaignAutomation
+\src\campaigns\index.ts:8 - PublishCampaignEventInput
+\src\campaigns\index.ts:8 - CampaignAutomationHealth
+\src\campaigns\index.ts:3 - CampaignAutomationHealthProps
+\src\lib\supabase.ts:1 - supabase
+\src\analytics\services\analyticsService.ts:9 - getAnalyticsOverview
+\src\analytics\services\analyticsService.ts:3 - AnalyticsOverview (used in module)
+\src\auth\contexts\AuthContext.tsx:12 - AuthProvider
+\src\auth\contexts\AuthContext.tsx:23 - useAuthContext
+\src\auth\services\restaurantService.ts:4 - RestaurantRecord (used in module)
+\src\automation\plugins\index.ts:12 - RuleEvaluationDetail
+\src\automation\plugins\index.ts:19 - RuleEvaluationResult
+\src\automation\plugins\index.ts:24 - TriggerExecutionContext
+\src\automation\plugins\index.ts:30 - ActionExecutionContext
+\src\automation\plugins\index.ts:38 - ITriggerPlugin
+\src\automation\plugins\index.ts:43 - IActionPlugin
+\src\automation\plugins\index.ts:48 - IRuleEvaluator
+\src\automation\plugins\index.ts:52 - IIntegrationAdapter
+\src\automation\plugins\index.ts:56 - IAutomationRepository
+\src\automation\plugins\index.ts:78 - DomainEventHandler
+\src\automation\plugins\index.ts:80 - IEventBus
+\src\automation\types\index.ts:1 - DomainEvent
+\src\automation\types\index.ts:10 - TriggerDefinition
+\src\automation\types\index.ts:19 - ConditionDefinition
+\src\automation\types\index.ts:29 - ActionDefinition
+\src\automation\types\index.ts:39 - ConsumerDefinition
+\src\automation\types\index.ts:50 - AutomationBundle
+\src\automation\types\index.ts:57 - AutomationExecutionStatus
+\src\automation\types\index.ts:59 - ActionResult
+\src\automation\types\index.ts:66 - AutomationExecutionRecord
+\src\automation\types\index.ts:78 - AutomationLogPayload
+\src\automation\types\index.ts:101 - AutomationExecutionResult
+\src\campaigns\services\index.ts:31 - CampaignAutomationRuntime
+\src\campaigns\services\index.ts:71 - getCampaignEventBus
+\src\campaigns\services\index.ts:79 - getCampaignAutomationRuntime
+\src\campaigns\services\index.ts:30 - CampaignDomainEventTypes
+\src\campaigns\services\index.ts:44 - publishCampaignDomainEvent
+\src\campaigns\services\index.ts:115 - CampaignRepository
+\src\campaigns\services\index.ts:95 - CampaignRuleEvaluator
+\src\campaigns\services\index.ts:56 - CampaignIntegrationAdapter
+\src\campaigns\types\index.ts:1 - CampaignStatus
+\src\campaigns\types\index.ts:3 - CampaignTriggerType
+\src\campaigns\types\index.ts:16 - CampaignConditionField
+\src\campaigns\types\index.ts:28 - CampaignConditionOperator
+\src\campaigns\types\index.ts:40 - CampaignActionType
+\src\campaigns\types\index.ts:49 - CampaignExecutionStatus
+\src\campaigns\types\index.ts:51 - CampaignQueueStatus
+\src\campaigns\types\index.ts:53 - CampaignLogLevel
+\src\campaigns\types\index.ts:55 - CampaignRecord
+\src\campaigns\types\index.ts:70 - CampaignTriggerRecord
+\src\campaigns\types\index.ts:81 - CampaignConditionRecord
+\src\campaigns\types\index.ts:93 - CampaignActionRecord
+\src\campaigns\types\index.ts:105 - CampaignTemplateRecord
+\src\campaigns\types\index.ts:117 - CampaignExecutionRecord
+\src\campaigns\types\index.ts:134 - CampaignQueueRecord
+\src\campaigns\types\index.ts:151 - CampaignLogRecord
+\src\campaigns\types\index.ts:163 - CampaignEvent
+\src\campaigns\types\index.ts:172 - CampaignConditionContext
+\src\campaigns\types\index.ts:185 - CampaignExecutionResult
+\src\campaigns\utils\eventFactory.ts:3 - createDomainEvent
+\src\campaigns\utils\executionKey.ts:12 - buildCampaignExecutionKey
+\src\crm\services\crmService.ts:32 - listCustomers
+\src\crm\services\customerService.ts:248 - getCustomerByEmail (used in module)
+\src\crm\services\customerService.ts:270 - getCustomerByPhone (used in module)
+\src\crm\services\customerService.ts:10 - CreateCustomerInput (used in module)
+\src\crm\services\customerService.ts:33 - UpdateCustomerInput (used in module)
+\src\crm\services\customerVisitsService.ts:289 - updateCustomerVisit
+\src\crm\services\customerVisitsService.ts:452 - getCustomerVisitById (used in module)
+\src\crm\services\customerVisitsService.ts:503 - listRestaurantVisits
+\src\crm\services\customerVisitsService.ts:525 - listOrganizationVisits (used in module)
+\src\crm\services\customerVisitsService.ts:547 - getLatestCustomerVisit
+\src\crm\services\customerVisitsService.ts:557 - getCustomerTotalVisits
+\src\crm\services\customerVisitsService.ts:656 - listActiveCustomerVisitRowsByOrganization
+\src\crm\services\customerVisitsService.ts:33 - CreateCustomerVisitInput (used in module)
+\src\crm\services\customerVisitsService.ts:46 - UpdateCustomerVisitInput (used in module)
+\src\dashboard\hooks\useDashboard.ts:4 - useDashboard
+\src\google\services\googleService.ts:9 - getGoogleAccount
+\src\google\services\googleService.ts:3 - GoogleAdsAccount (used in module)
+\src\loyalty\services\loyaltyService.ts:257 - getLoyaltyConfig (used in module)
+\src\loyalty\services\loyaltyService.ts:296 - upsertLoyaltyConfig
+\src\loyalty\services\loyaltyService.ts:350 - listCustomerLevels (used in module)
+\src\loyalty\services\loyaltyService.ts:390 - createCustomerLevel
+\src\loyalty\services\loyaltyService.ts:419 - updateCustomerLevel
+\src\loyalty\services\loyaltyService.ts:472 - getRewardById (used in module)
+\src\loyalty\services\loyaltyService.ts:515 - createReward
+\src\loyalty\services\loyaltyService.ts:544 - updateReward
+\src\loyalty\services\loyaltyService.ts:592 - archiveReward
+\src\loyalty\services\loyaltyService.ts:25 - UpsertLoyaltyConfigInput (used in module)
+\src\loyalty\services\loyaltyService.ts:35 - CreateCustomerLevelInput (used in module)
+\src\loyalty\services\loyaltyService.ts:45 - UpdateCustomerLevelInput (used in module)
+\src\loyalty\services\loyaltyService.ts:49 - CreateLoyaltyRewardInput (used in module)
+\src\loyalty\services\loyaltyService.ts:58 - UpdateLoyaltyRewardInput (used in module)
+\src\loyalty\services\loyaltyService.ts:62 - RedeemRewardInput (used in module)
+\src\loyalty\services\loyaltyService.ts:70 - VisitLoyaltyInput (used in module)
+\src\loyalty\services\loyaltyService.ts:78 - VisitLoyaltyResult (used in module)
+\src\marketing\services\marketingService.ts:10 - listCampaigns
+\src\marketing\services\marketingService.ts:3 - Campaign (used in module)
+\src\meta\services\metaService.ts:9 - getMetaAccount
+\src\meta\services\metaService.ts:3 - MetaAdAccount (used in module)
+\src\notifications\services\notificationsService.ts:9 - listNotifications
+\src\notifications\services\notificationsService.ts:3 - NotificationItem (used in module)
+\src\restaurants\services\restaurantService.ts:106 - getRestaurantById
+\src\restaurants\services\restaurantService.ts:127 - getRestaurantBySlug
+\src\restaurants\services\restaurantService.ts:149 - getRestaurantsByOrganization
+\src\restaurants\services\restaurantService.ts:170 - createRestaurant
+\src\restaurants\services\restaurantService.ts:210 - updateRestaurant
+\src\restaurants\services\restaurantService.ts:282 - archiveRestaurant
+\src\restaurants\services\restaurantService.ts:5 - CreateRestaurantInput (used in module)
+\src\restaurants\services\restaurantService.ts:8 - UpdateRestaurantInput (used in module)
+\src\settings\services\settingsService.ts:9 - getSettingsConfig
+\src\settings\services\settingsService.ts:3 - SettingsConfig (used in module)
+\src\shared\contexts\AppProviders.tsx:10 - AppShellProvider
+\src\shared\contexts\AppProviders.tsx:21 - useAppShell
+\src\shared\hooks\useDebounce.ts:3 - useDebounce
+\src\shared\routes\index.ts:3 - appRoutes
+\src\shared\types\database.ts:1 - UUID (used in module)
+\src\shared\types\database.ts:2 - ISODateString (used in module)
+\src\shared\types\database.ts:4 - Timestamps (used in module)
+\src\shared\types\database.ts:9 - SoftDelete (used in module)
+\src\shared\types\database.ts:14 - DomainEntity (used in module)
+\src\shared\types\database.ts:18 - MembershipRole (used in module)
+\src\shared\types\database.ts:19 - MembershipStatus (used in module)
+\src\shared\types\database.ts:21 - OrganizationStatus (used in module)
+\src\shared\types\database.ts:27 - WalletCardStatus (used in module)
+\src\shared\types\database.ts:31 - LoyaltyRoundingStrategy (used in module)
+\src\shared\types\database.ts:33 - RewardHistoryStatus (used in module)
+\src\shared\types\database.ts:35 - BillingInterval (used in module)
+\src\shared\types\database.ts:36 - PlanStatus (used in module)
+\src\shared\types\database.ts:37 - SubscriptionStatus (used in module)
+\src\shared\types\database.ts:46 - Organization
+\src\shared\types\database.ts:65 - OrganizationMembership
+\src\shared\types\database.ts:72 - RestaurantMembership
+\src\shared\types\database.ts:177 - WalletCard
+\src\shared\types\database.ts:210 - Plan
+\src\shared\types\database.ts:221 - Subscription
+\src\shared\types\index.ts:1 - RouteModule (used in module)
+\src\shared\types\index.ts:13 - AppRoute
+\src\shared\types\index.ts:21 - BaseEntity (used in module)
+\src\shared\types\index.ts:27 - Tenant
+\src\shared\types\index.ts:33 - UserProfile
+\src\shared\types\index.ts:40 - ApiResponse
+\src\wallet\services\walletPassService.ts:319 - listCustomerWalletPasses (used in module)
+\src\wallet\services\walletPassService.ts:365 - synchronizeWalletPass (used in module)
+\src\wallet\services\walletPassService.ts:642 - getWalletPassDownloadByToken
+\src\wallet\services\walletPassService.ts:40 - CreateWalletPassInput (used in module)
+\src\wallet\services\walletPassService.ts:46 - WalletPassPayload (used in module)
+\src\wallet\services\walletPassService.ts:71 - WalletPassDownload (used in module)
+\src\wallet\services\walletService.ts:98 - createWalletCard
+\src\wallet\services\walletService.ts:134 - getWalletCard
+\src\wallet\services\walletService.ts:163 - updateWalletCard
+\src\wallet\services\walletService.ts:201 - revokeWalletCard
+\src\wallet\services\walletService.ts:214 - getWalletSummary
+\src\wallet\services\walletService.ts:9 - WalletCardRecord (used in module)
+\src\wallet\services\walletService.ts:20 - CreateWalletCardInput (used in module)
+\src\wallet\services\walletService.ts:27 - UpdateWalletCardInput (used in module)
+\src\wallet\services\walletService.ts:33 - WalletSummary (used in module)
+\src\app\components\figma\ImageWithFallback.tsx:6 - ImageWithFallback
+\src\app\components\ui\accordion.tsx:66 - Accordion (used in module)
+\src\app\components\ui\accordion.tsx:66 - AccordionItem (used in module)
+\src\app\components\ui\accordion.tsx:66 - AccordionTrigger (used in module)
+\src\app\components\ui\accordion.tsx:66 - AccordionContent (used in module)
+\src\app\components\ui\alert-dialog.tsx:146 - AlertDialog (used in module)
+\src\app\components\ui\alert-dialog.tsx:147 - AlertDialogPortal (used in module)
+\src\app\components\ui\alert-dialog.tsx:148 - AlertDialogOverlay (used in module)
+\src\app\components\ui\alert-dialog.tsx:149 - AlertDialogTrigger (used in module)
+\src\app\components\ui\alert-dialog.tsx:150 - AlertDialogContent (used in module)
+\src\app\components\ui\alert-dialog.tsx:151 - AlertDialogHeader (used in module)
+\src\app\components\ui\alert-dialog.tsx:152 - AlertDialogFooter (used in module)
+\src\app\components\ui\alert-dialog.tsx:153 - AlertDialogTitle (used in module)
+\src\app\components\ui\alert-dialog.tsx:154 - AlertDialogDescription (used in module)
+\src\app\components\ui\alert-dialog.tsx:155 - AlertDialogAction (used in module)
+\src\app\components\ui\alert-dialog.tsx:156 - AlertDialogCancel (used in module)
+\src\app\components\ui\alert.tsx:66 - Alert (used in module)
+\src\app\components\ui\alert.tsx:66 - AlertTitle (used in module)
+\src\app\components\ui\alert.tsx:66 - AlertDescription (used in module)
+\src\app\components\ui\aspect-ratio.tsx:11 - AspectRatio (used in module)
+\src\app\components\ui\avatar.tsx:53 - Avatar (used in module)
+\src\app\components\ui\avatar.tsx:53 - AvatarImage (used in module)
+\src\app\components\ui\avatar.tsx:53 - AvatarFallback (used in module)
+\src\app\components\ui\badge.tsx:46 - Badge (used in module)
+\src\app\components\ui\badge.tsx:46 - badgeVariants (used in module)
+\src\app\components\ui\breadcrumb.tsx:102 - Breadcrumb (used in module)
+\src\app\components\ui\breadcrumb.tsx:103 - BreadcrumbList (used in module)
+\src\app\components\ui\breadcrumb.tsx:104 - BreadcrumbItem (used in module)
+\src\app\components\ui\breadcrumb.tsx:105 - BreadcrumbLink (used in module)
+\src\app\components\ui\breadcrumb.tsx:106 - BreadcrumbPage (used in module)
+\src\app\components\ui\breadcrumb.tsx:107 - BreadcrumbSeparator (used in module)
+\src\app\components\ui\breadcrumb.tsx:108 - BreadcrumbEllipsis (used in module)
+\src\app\components\ui\calendar.tsx:75 - Calendar (used in module)
+\src\app\components\ui\card.tsx:87 - CardFooter (used in module)
+\src\app\components\ui\card.tsx:89 - CardAction (used in module)
+\src\app\components\ui\card.tsx:90 - CardDescription (used in module)
+\src\app\components\ui\carousel.tsx:235 - CarouselApi (used in module)
+\src\app\components\ui\carousel.tsx:236 - Carousel (used in module)
+\src\app\components\ui\carousel.tsx:237 - CarouselContent (used in module)
+\src\app\components\ui\carousel.tsx:238 - CarouselItem (used in module)
+\src\app\components\ui\carousel.tsx:239 - CarouselPrevious (used in module)
+\src\app\components\ui\carousel.tsx:240 - CarouselNext (used in module)
+\src\app\components\ui\chart.tsx:11 - ChartConfig (used in module)
+\src\app\components\ui\chart.tsx:347 - ChartContainer (used in module)
+\src\app\components\ui\chart.tsx:348 - ChartTooltip (used in module)
+\src\app\components\ui\chart.tsx:349 - ChartTooltipContent (used in module)
+\src\app\components\ui\chart.tsx:350 - ChartLegend (used in module)
+\src\app\components\ui\chart.tsx:351 - ChartLegendContent (used in module)
+\src\app\components\ui\chart.tsx:352 - ChartStyle (used in module)
+\src\app\components\ui\checkbox.tsx:32 - Checkbox (used in module)
+\src\app\components\ui\collapsible.tsx:33 - Collapsible (used in module)
+\src\app\components\ui\collapsible.tsx:33 - CollapsibleTrigger (used in module)
+\src\app\components\ui\collapsible.tsx:33 - CollapsibleContent (used in module)
+\src\app\components\ui\command.tsx:168 - Command (used in module)
+\src\app\components\ui\command.tsx:169 - CommandDialog (used in module)
+\src\app\components\ui\command.tsx:170 - CommandInput (used in module)
+\src\app\components\ui\command.tsx:171 - CommandList (used in module)
+\src\app\components\ui\command.tsx:172 - CommandEmpty (used in module)
+\src\app\components\ui\command.tsx:173 - CommandGroup (used in module)
+\src\app\components\ui\command.tsx:174 - CommandItem (used in module)
+\src\app\components\ui\command.tsx:175 - CommandShortcut (used in module)
+\src\app\components\ui\command.tsx:176 - CommandSeparator (used in module)
+\src\app\components\ui\context-menu.tsx:237 - ContextMenu (used in module)
+\src\app\components\ui\context-menu.tsx:238 - ContextMenuTrigger (used in module)
+\src\app\components\ui\context-menu.tsx:239 - ContextMenuContent (used in module)
+\src\app\components\ui\context-menu.tsx:240 - ContextMenuItem (used in module)
+\src\app\components\ui\context-menu.tsx:241 - ContextMenuCheckboxItem (used in module)
+\src\app\components\ui\context-menu.tsx:242 - ContextMenuRadioItem (used in module)
+\src\app\components\ui\context-menu.tsx:243 - ContextMenuLabel (used in module)
+\src\app\components\ui\context-menu.tsx:244 - ContextMenuSeparator (used in module)
+\src\app\components\ui\context-menu.tsx:245 - ContextMenuShortcut (used in module)
+\src\app\components\ui\context-menu.tsx:246 - ContextMenuGroup (used in module)
+\src\app\components\ui\context-menu.tsx:247 - ContextMenuPortal (used in module)
+\src\app\components\ui\context-menu.tsx:248 - ContextMenuSub (used in module)
+\src\app\components\ui\context-menu.tsx:249 - ContextMenuSubContent (used in module)
+\src\app\components\ui\context-menu.tsx:250 - ContextMenuSubTrigger (used in module)
+\src\app\components\ui\context-menu.tsx:251 - ContextMenuRadioGroup (used in module)
+\src\app\components\ui\dialog.tsx:126 - DialogClose (used in module)
+\src\app\components\ui\dialog.tsx:129 - DialogFooter (used in module)
+\src\app\components\ui\dialog.tsx:131 - DialogOverlay (used in module)
+\src\app\components\ui\dialog.tsx:132 - DialogPortal (used in module)
+\src\app\components\ui\dialog.tsx:134 - DialogTrigger (used in module)
+\src\app\components\ui\drawer.tsx:122 - Drawer (used in module)
+\src\app\components\ui\drawer.tsx:123 - DrawerPortal (used in module)
+\src\app\components\ui\drawer.tsx:124 - DrawerOverlay (used in module)
+\src\app\components\ui\drawer.tsx:125 - DrawerTrigger (used in module)
+\src\app\components\ui\drawer.tsx:126 - DrawerClose (used in module)
+\src\app\components\ui\drawer.tsx:127 - DrawerContent (used in module)
+\src\app\components\ui\drawer.tsx:128 - DrawerHeader (used in module)
+\src\app\components\ui\drawer.tsx:129 - DrawerFooter (used in module)
+\src\app\components\ui\drawer.tsx:130 - DrawerTitle (used in module)
+\src\app\components\ui\drawer.tsx:131 - DrawerDescription (used in module)
+\src\app\components\ui\dropdown-menu.tsx:242 - DropdownMenu (used in module)
+\src\app\components\ui\dropdown-menu.tsx:243 - DropdownMenuPortal (used in module)
+\src\app\components\ui\dropdown-menu.tsx:244 - DropdownMenuTrigger (used in module)
+\src\app\components\ui\dropdown-menu.tsx:245 - DropdownMenuContent (used in module)
+\src\app\components\ui\dropdown-menu.tsx:246 - DropdownMenuGroup (used in module)
+\src\app\components\ui\dropdown-menu.tsx:247 - DropdownMenuLabel (used in module)
+\src\app\components\ui\dropdown-menu.tsx:248 - DropdownMenuItem (used in module)
+\src\app\components\ui\dropdown-menu.tsx:249 - DropdownMenuCheckboxItem (used in module)
+\src\app\components\ui\dropdown-menu.tsx:250 - DropdownMenuRadioGroup (used in module)
+\src\app\components\ui\dropdown-menu.tsx:251 - DropdownMenuRadioItem (used in module)
+\src\app\components\ui\dropdown-menu.tsx:252 - DropdownMenuSeparator (used in module)
+\src\app\components\ui\dropdown-menu.tsx:253 - DropdownMenuShortcut (used in module)
+\src\app\components\ui\dropdown-menu.tsx:254 - DropdownMenuSub (used in module)
+\src\app\components\ui\dropdown-menu.tsx:255 - DropdownMenuSubTrigger (used in module)
+\src\app\components\ui\dropdown-menu.tsx:256 - DropdownMenuSubContent (used in module)
+\src\app\components\ui\form.tsx:160 - useFormField (used in module)
+\src\app\components\ui\form.tsx:161 - Form (used in module)
+\src\app\components\ui\form.tsx:162 - FormItem (used in module)
+\src\app\components\ui\form.tsx:163 - FormLabel (used in module)
+\src\app\components\ui\form.tsx:164 - FormControl (used in module)
+\src\app\components\ui\form.tsx:165 - FormDescription (used in module)
+\src\app\components\ui\form.tsx:166 - FormMessage (used in module)
+\src\app\components\ui\form.tsx:167 - FormField (used in module)
+\src\app\components\ui\hover-card.tsx:44 - HoverCard (used in module)
+\src\app\components\ui\hover-card.tsx:44 - HoverCardTrigger (used in module)
+\src\app\components\ui\hover-card.tsx:44 - HoverCardContent (used in module)
+\src\app\components\ui\input-otp.tsx:77 - InputOTP (used in module)
+\src\app\components\ui\input-otp.tsx:77 - InputOTPGroup (used in module)
+\src\app\components\ui\input-otp.tsx:77 - InputOTPSlot (used in module)
+\src\app\components\ui\input-otp.tsx:77 - InputOTPSeparator (used in module)
+\src\app\components\ui\menubar.tsx:260 - Menubar (used in module)
+\src\app\components\ui\menubar.tsx:261 - MenubarPortal (used in module)
+\src\app\components\ui\menubar.tsx:262 - MenubarMenu (used in module)
+\src\app\components\ui\menubar.tsx:263 - MenubarTrigger (used in module)
+\src\app\components\ui\menubar.tsx:264 - MenubarContent (used in module)
+\src\app\components\ui\menubar.tsx:265 - MenubarGroup (used in module)
+\src\app\components\ui\menubar.tsx:266 - MenubarSeparator (used in module)
+\src\app\components\ui\menubar.tsx:267 - MenubarLabel (used in module)
+\src\app\components\ui\menubar.tsx:268 - MenubarItem (used in module)
+\src\app\components\ui\menubar.tsx:269 - MenubarShortcut (used in module)
+\src\app\components\ui\menubar.tsx:270 - MenubarCheckboxItem (used in module)
+\src\app\components\ui\menubar.tsx:271 - MenubarRadioGroup (used in module)
+\src\app\components\ui\menubar.tsx:272 - MenubarRadioItem (used in module)
+\src\app\components\ui\menubar.tsx:273 - MenubarSub (used in module)
+\src\app\components\ui\menubar.tsx:274 - MenubarSubTrigger (used in module)
+\src\app\components\ui\menubar.tsx:275 - MenubarSubContent (used in module)
+\src\app\components\ui\navigation-menu.tsx:159 - NavigationMenu (used in module)
+\src\app\components\ui\navigation-menu.tsx:160 - NavigationMenuList (used in module)
+\src\app\components\ui\navigation-menu.tsx:161 - NavigationMenuItem (used in module)
+\src\app\components\ui\navigation-menu.tsx:162 - NavigationMenuContent (used in module)
+\src\app\components\ui\navigation-menu.tsx:163 - NavigationMenuTrigger (used in module)
+\src\app\components\ui\navigation-menu.tsx:164 - NavigationMenuLink (used in module)
+\src\app\components\ui\navigation-menu.tsx:165 - NavigationMenuIndicator (used in module)
+\src\app\components\ui\navigation-menu.tsx:166 - NavigationMenuViewport (used in module)
+\src\app\components\ui\navigation-menu.tsx:167 - navigationMenuTriggerStyle (used in module)
+\src\app\components\ui\pagination.tsx:120 - Pagination (used in module)
+\src\app\components\ui\pagination.tsx:121 - PaginationContent (used in module)
+\src\app\components\ui\pagination.tsx:122 - PaginationLink (used in module)
+\src\app\components\ui\pagination.tsx:123 - PaginationItem (used in module)
+\src\app\components\ui\pagination.tsx:124 - PaginationPrevious (used in module)
+\src\app\components\ui\pagination.tsx:125 - PaginationNext (used in module)
+\src\app\components\ui\pagination.tsx:126 - PaginationEllipsis (used in module)
+\src\app\components\ui\popover.tsx:48 - Popover (used in module)
+\src\app\components\ui\popover.tsx:48 - PopoverTrigger (used in module)
+\src\app\components\ui\popover.tsx:48 - PopoverContent (used in module)
+\src\app\components\ui\popover.tsx:48 - PopoverAnchor (used in module)
+\src\app\components\ui\progress.tsx:31 - Progress (used in module)
+\src\app\components\ui\radio-group.tsx:45 - RadioGroup (used in module)
+\src\app\components\ui\radio-group.tsx:45 - RadioGroupItem (used in module)
+\src\app\components\ui\resizable.tsx:56 - ResizablePanelGroup (used in module)
+\src\app\components\ui\resizable.tsx:56 - ResizablePanel (used in module)
+\src\app\components\ui\resizable.tsx:56 - ResizableHandle (used in module)
+\src\app\components\ui\scroll-area.tsx:58 - ScrollArea (used in module)
+\src\app\components\ui\scroll-area.tsx:58 - ScrollBar (used in module)
+\src\app\components\ui\select.tsx:179 - Select (used in module)
+\src\app\components\ui\select.tsx:180 - SelectContent (used in module)
+\src\app\components\ui\select.tsx:181 - SelectGroup (used in module)
+\src\app\components\ui\select.tsx:182 - SelectItem (used in module)
+\src\app\components\ui\select.tsx:183 - SelectLabel (used in module)
+\src\app\components\ui\select.tsx:184 - SelectScrollDownButton (used in module)
+\src\app\components\ui\select.tsx:185 - SelectScrollUpButton (used in module)
+\src\app\components\ui\select.tsx:186 - SelectSeparator (used in module)
+\src\app\components\ui\select.tsx:187 - SelectTrigger (used in module)
+\src\app\components\ui\select.tsx:188 - SelectValue (used in module)
+\src\app\components\ui\sheet.tsx:132 - SheetTrigger (used in module)
+\src\app\components\ui\sheet.tsx:133 - SheetClose (used in module)
+\src\app\components\ui\sheet.tsx:136 - SheetFooter (used in module)
+\src\app\components\ui\sidebar.tsx:702 - Sidebar (used in module)
+\src\app\components\ui\sidebar.tsx:703 - SidebarContent (used in module)
+\src\app\components\ui\sidebar.tsx:704 - SidebarFooter (used in module)
+\src\app\components\ui\sidebar.tsx:705 - SidebarGroup (used in module)
+\src\app\components\ui\sidebar.tsx:706 - SidebarGroupAction (used in module)
+\src\app\components\ui\sidebar.tsx:707 - SidebarGroupContent (used in module)
+\src\app\components\ui\sidebar.tsx:708 - SidebarGroupLabel (used in module)
+\src\app\components\ui\sidebar.tsx:709 - SidebarHeader (used in module)
+\src\app\components\ui\sidebar.tsx:710 - SidebarInput (used in module)
+\src\app\components\ui\sidebar.tsx:711 - SidebarInset (used in module)
+\src\app\components\ui\sidebar.tsx:712 - SidebarMenu (used in module)
+\src\app\components\ui\sidebar.tsx:713 - SidebarMenuAction (used in module)
+\src\app\components\ui\sidebar.tsx:714 - SidebarMenuBadge (used in module)
+\src\app\components\ui\sidebar.tsx:715 - SidebarMenuButton (used in module)
+\src\app\components\ui\sidebar.tsx:716 - SidebarMenuItem (used in module)
+\src\app\components\ui\sidebar.tsx:717 - SidebarMenuSkeleton (used in module)
+\src\app\components\ui\sidebar.tsx:718 - SidebarMenuSub (used in module)
+\src\app\components\ui\sidebar.tsx:719 - SidebarMenuSubButton (used in module)
+\src\app\components\ui\sidebar.tsx:720 - SidebarMenuSubItem (used in module)
+\src\app\components\ui\sidebar.tsx:721 - SidebarProvider (used in module)
+\src\app\components\ui\sidebar.tsx:722 - SidebarRail (used in module)
+\src\app\components\ui\sidebar.tsx:723 - SidebarSeparator (used in module)
+\src\app\components\ui\sidebar.tsx:724 - SidebarTrigger (used in module)
+\src\app\components\ui\sidebar.tsx:725 - useSidebar (used in module)
+\src\app\components\ui\slider.tsx:63 - Slider (used in module)
+\src\app\components\ui\switch.tsx:31 - Switch (used in module)
+\src\app\components\ui\table.tsx:108 - Table (used in module)
+\src\app\components\ui\table.tsx:109 - TableHeader (used in module)
+\src\app\components\ui\table.tsx:110 - TableBody (used in module)
+\src\app\components\ui\table.tsx:111 - TableFooter (used in module)
+\src\app\components\ui\table.tsx:112 - TableHead (used in module)
+\src\app\components\ui\table.tsx:113 - TableRow (used in module)
+\src\app\components\ui\table.tsx:114 - TableCell (used in module)
+\src\app\components\ui\table.tsx:115 - TableCaption (used in module)
+\src\app\components\ui\tabs.tsx:66 - Tabs (used in module)
+\src\app\components\ui\tabs.tsx:66 - TabsList (used in module)
+\src\app\components\ui\tabs.tsx:66 - TabsTrigger (used in module)
+\src\app\components\ui\tabs.tsx:66 - TabsContent (used in module)
+\src\app\components\ui\textarea.tsx:18 - Textarea (used in module)
+\src\app\components\ui\toggle-group.tsx:73 - ToggleGroup (used in module)
+\src\app\components\ui\toggle-group.tsx:73 - ToggleGroupItem (used in module)
+\src\app\components\ui\toggle.tsx:47 - Toggle (used in module)

@@ -19,9 +19,9 @@ import {
   Search, Plus, Download, Eye, Star, Crown, ArrowUpRight,
   ArrowDownRight, MoreHorizontal, LogOut, Phone, Palette, Shield,
   Send, DollarSign, Activity, FileText, Lock, Building2,
-  CheckCircle, Clock, Zap, Globe, Edit, Trash2, Mail, Smartphone,
+  CheckCircle, Clock, Zap, Globe, Edit, Trash2, Smartphone,
   Award, AlertCircle, RefreshCw, ChevronLeft, Utensils, Image,
-  Copy, Coffee, Instagram, Chrome, ExternalLink, MapPin, X
+  Copy, Instagram, Chrome, ExternalLink, X
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie,
@@ -75,17 +75,6 @@ const RETENTION_DATA = [
   { month: "May", rate: 78 },
   { month: "Jun", rate: 82 },
   { month: "Jul", rate: 85 },
-];
-
-const CUSTOMERS = [
-  { id: 1, name: "Sofia Martins", email: "sofia.martins@gmail.com", phone: "+351 912 345 678", visits: 47, ltv: 3840, status: "VIP", tags: ["Birthday Club", "Wine Lover"], lastVisit: "2h ago", birthday: "Mar 14", favoriteItem: "Truffle Risotto", points: 2840, city: "Lisbon" },
-  { id: 2, name: "Marco Ferreira", email: "marco.f@hotmail.com", phone: "+351 934 567 890", visits: 31, ltv: 2150, status: "Regular", tags: ["Lunch Regular", "Business"], lastVisit: "1d ago", birthday: "Jul 28", favoriteItem: "Wagyu Burger", points: 1520, city: "Porto" },
-  { id: 3, name: "Ana Costa", email: "ana.costa@icloud.com", phone: "+351 916 234 567", visits: 12, ltv: 890, status: "New", tags: ["Weekend"], lastVisit: "3d ago", birthday: "Nov 5", favoriteItem: "Salmon Tartare", points: 640, city: "Lisbon" },
-  { id: 4, name: "Ricardo Sousa", email: "r.sousa@empresa.pt", phone: "+351 963 789 012", visits: 68, ltv: 5620, status: "VIP", tags: ["Birthday Club", "Corporate"], lastVisit: "5h ago", birthday: "Aug 19", favoriteItem: "Tasting Menu", points: 4180, city: "Lisbon" },
-  { id: 5, name: "Inês Rodrigues", email: "ines.r@gmail.com", phone: "+351 928 456 789", visits: 19, ltv: 1340, status: "Regular", tags: ["Birthday Club", "Veggie"], lastVisit: "2d ago", birthday: "Feb 22", favoriteItem: "Mushroom Ravioli", points: 980, city: "Braga" },
-  { id: 6, name: "Diogo Oliveira", email: "d.oliveira@outlook.com", phone: "+351 945 012 345", visits: 8, ltv: 560, status: "At Risk", tags: ["Churned"], lastVisit: "32d ago", birthday: "Dec 10", favoriteItem: "Grilled Sea Bass", points: 240, city: "Porto" },
-  { id: 7, name: "Beatriz Nunes", email: "bea.nunes@gmail.com", phone: "+351 918 765 432", visits: 24, ltv: 1890, status: "Regular", tags: ["Birthday Club"], lastVisit: "6h ago", birthday: "Apr 8", favoriteItem: "Lobster Bisque", points: 1240, city: "Lisbon" },
-  { id: 8, name: "Tiago Santos", email: "t.santos@hotmail.com", phone: "+351 937 654 321", visits: 3, ltv: 210, status: "New", tags: [], lastVisit: "7d ago", birthday: "Jan 30", favoriteItem: "Ribeye Steak", points: 120, city: "Cascais" },
 ];
 
 const CAMPAIGNS_LIST = [
